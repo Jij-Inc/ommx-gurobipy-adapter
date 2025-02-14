@@ -97,11 +97,13 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     f"There is no feasible solution. [status: {data.Status}]"
                 )
 
+            entries = {}
+            for var in self.instance.raw.decision_variables:
+                variable = data.getVarByName(str(var.id))
+                if variable:
+                    entries[var.id] = variable.X
             return State(
-                entries={
-                    var.id: data.getVarByName(str(var.id)).X
-                    for var in self.instance.raw.decision_variables
-                }
+                entries=entries
             )
         except Exception as e:
             raise OMMXGurobipyAdapterError(f"Failed to decode solution: {str(e)}")
