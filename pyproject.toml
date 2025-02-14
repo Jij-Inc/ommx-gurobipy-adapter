@@ -33,4 +33,5 @@ dev = ["markdown-code-runner", "pyright", "pytest", "ruff"]
 [dependency-groups]
 dev = [
     "pytest>=8.3.4",
+    "ruff>=0.9.6",
 ]

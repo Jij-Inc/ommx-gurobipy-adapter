@@ -1,0 +1,47 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Dependencies
+        run: |
+          pip install ".[dev]"
+          pip install pytest-github-actions-annotate-failures
+
+      - name: Type check
+        if: always()
+        run: |
+          pyright
+
+      - name: Lint
+        if: always()
+        run: |
+          ruff check
+
+      - name: Check format
+        if: always()
+        run: |
+          ruff format --check
+
+      - name: Run Tests
+        if: always()
+        run: |
+          pytest --doctest-modules -vv
