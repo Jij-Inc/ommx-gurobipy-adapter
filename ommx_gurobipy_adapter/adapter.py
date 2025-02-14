@@ -102,9 +102,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 variable = data.getVarByName(str(var.id))
                 if variable:
                     entries[var.id] = variable.X
-            return State(
-                entries=entries
-            )
+            return State(entries=entries)
         except Exception as e:
             raise OMMXGurobipyAdapterError(f"Failed to decode solution: {str(e)}")
 
