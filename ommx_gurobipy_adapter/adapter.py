@@ -184,7 +184,6 @@ class OMMXGurobipyAdapter(SolverAdapter):
             for sos1 in ommx_hints.sos1_constraints:
                 bid = sos1.binary_constraint_id
                 excluded.add(bid)
-                name = f"sos1_{bid}"
                 vars = [self.varname_map[str(v)] for v in sos1.decision_variables]
                 self.model.addSOS(GRB.SOS_TYPE1, vars)
 
