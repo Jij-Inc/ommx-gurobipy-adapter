@@ -26,7 +26,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          uv sync --extra dev
+          uv sync
           uv pip install pytest-github-actions-annotate-failures
 
       - name: Type check
