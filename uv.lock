@@ -231,14 +231,14 @@ wheels = [
 
 [[package]]
 name = "ommx-gurobipy-adapter"
-version = "1.8.4"
+version = "0.1.1.dev5+g69f3182.d20250305"
 source = { editable = "." }
 dependencies = [
     { name = "gurobipy" },
     { name = "ommx" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "markdown-code-runner" },
     { name = "pyright" },
@@ -246,24 +246,16 @@ dev = [
     { name = "ruff" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "gurobipy", specifier = ">=12.0.1" },
-    { name = "markdown-code-runner", marker = "extra == 'dev'" },
-    { name = "ommx", specifier = ">=1.8.3" },
-    { name = "pyright", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "ommx", specifier = ">=1.8.3,<2.0.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "markdown-code-runner", specifier = ">=2.1.0" },
+    { name = "pyright", specifier = ">=1.1.394" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "ruff", specifier = ">=0.9.6" },
 ]
