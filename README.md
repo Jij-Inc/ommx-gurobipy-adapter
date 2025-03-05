@@ -120,7 +120,11 @@ python -m pytest tests/
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
+This project (the source code contained in this repository) is licensed under the [Apache License 2.0](./LICENSE).
+
+> [!WARNING]
+> The package `ommx-gurobipy-adapter` depends on `gurobipy`, which is a proprietary software.
+> Please make sure you have a valid license for Gurobi Optimizer when using this package.
 
 ## Reference
 
