@@ -34,7 +34,7 @@ pip install ommx-gurobipy-adapter
 
 Here's a simple example of how to use the adapter:
 
-```python
+```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 from ommx.v1 import Instance, DecisionVariable
 
@@ -66,7 +66,7 @@ print(f"x2 = {solution.state.entries[2]}")
 
 If you need more control over the Gurobi solver parameters, you can use the adapter in two steps:
 
-```python
+```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
 # Create adapter
@@ -96,7 +96,7 @@ The adapter provides specific error types for different situations:
 
 Example of error handling:
 
-```python
+```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapterError
 from ommx.adapter import InfeasibleDetected, UnboundedDetected
 
@@ -112,11 +112,13 @@ except OMMXGurobipyAdapterError as e:
 
 ## Testing
 
-To run the test suite:
+- Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- Run `pytest` and `markdown-code-runner`:
 
-```bash
-python -m pytest tests/
-```
+    ```bash
+    uv run pytest -vv
+    uv run markdown-code-runner README.md
+    ```
 
 ## License
 

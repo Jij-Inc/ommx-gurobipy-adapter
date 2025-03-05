@@ -48,3 +48,4 @@ jobs:
         if: always()
         run: |
           uv run pytest --doctest-modules -vv
+          uv run markdown-code-runner --verbose README.md

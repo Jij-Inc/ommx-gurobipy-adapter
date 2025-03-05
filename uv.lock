@@ -62,6 +62,15 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown-code-runner"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/80/7d1e0dc47a3bfcbf6777281a472b98fea78a3b60dd809f916875e773173b/markdown-code-runner-2.1.0.tar.gz", hash = "sha256:aecc56121ebeccb2a9a74ea818783486cb3a6457ec5da9ee2a64a4fc8833bcf9", size = 15781 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/ba/7e2c2088135272059bb33d3324a58cd19550b6bc629a9d249efc6134ffdf/markdown_code_runner-2.1.0-py3-none-any.whl", hash = "sha256:ff439a8c54a7e24d66657d68d342e8cea703ec56f21b31e7f08bbd7d9e241337", size = 11922 },
+]
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -222,7 +231,7 @@ wheels = [
 
 [[package]]
 name = "ommx-gurobipy-adapter"
-version = "0.1.1.dev1+g60124c6.d20250305"
+version = "0.1.1.dev5+g69f3182.d20250305"
 source = { editable = "." }
 dependencies = [
     { name = "gurobipy" },
@@ -231,6 +240,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "markdown-code-runner" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "ruff" },
@@ -244,6 +254,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "markdown-code-runner", specifier = ">=2.1.0" },
     { name = "pyright", specifier = ">=1.1.394" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "ruff", specifier = ">=0.9.6" },
