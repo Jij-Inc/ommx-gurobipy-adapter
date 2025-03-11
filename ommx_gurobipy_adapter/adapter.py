@@ -35,8 +35,9 @@ class OMMXGurobipyAdapter(SolverAdapter):
         self._set_objective()
         self._set_constraints()
 
-    @staticmethod
+    @classmethod
     def solve(
+        cls,
         ommx_instance: Instance,
         *,
         use_sos1: Literal["disabled", "auto", "forced"] = "auto",
@@ -48,7 +49,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
         :param use_sos1: How to handle SOS1 constraints ("disabled", "auto", or "forced")
         :return: The solution as an ommx.v1.Solution object
         """
-        adapter = OMMXGurobipyAdapter(ommx_instance, use_sos1=use_sos1)
+        adapter = cls(ommx_instance, use_sos1=use_sos1)
         model = adapter.solver_input
         model.optimize()
         return adapter.decode(model)
