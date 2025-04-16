@@ -263,7 +263,7 @@ def test_integration_sos1_constraint():
 
     instance = Instance.from_components(
         decision_variables=[x1, x2, x3],
-        objective=x1 + 2*x2 + 3*x3,  # Should select x1=1 as it has lowest cost
+        objective=x1 + 2 * x2 + 3 * x3,  # Should select x1=1 as it has lowest cost
         constraints=[x1 + x2 + x3 == 1],  # Exactly one must be 1
         sense=Instance.MINIMIZE,
     )
