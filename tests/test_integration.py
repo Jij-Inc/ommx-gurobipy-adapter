@@ -311,7 +311,7 @@ def test_integration_with_sos1_constraint():
     )
 
     # Add SOS1 constraint. Because ommx does not support SOS1 constraints, we need to add it manually.
-    # if you want to add SOS1 constraints automatically, please use the jijmodeling>=1.12.0
+    # If you want to add SOS1 constraints automatically, please use the jijmodeling>=1.12.0
     hints = ConstraintHints(
         sos1_constraints=[
             SOS1(binary_constraint_id=0, decision_variables=[1, 2, 3]),
