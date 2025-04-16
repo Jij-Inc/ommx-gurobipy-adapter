@@ -254,29 +254,29 @@ def test_integration_feasible_constant_constraint():
     assert actual_entries[2] == pytest.approx(3)
 
 
-# def test_integration_sos1_constraint():
-#     """Test problem with SOS1 constraint"""
-#     # Test with three binary variables where exactly one must be 1
-#     x1 = DecisionVariable.binary(1)
-#     x2 = DecisionVariable.binary(2)
-#     x3 = DecisionVariable.binary(3)
+def test_integration_sos1_constraint():
+    """Test problem with SOS1 constraint"""
+    # Test with three binary variables where exactly one must be 1
+    x1 = DecisionVariable.binary(1)
+    x2 = DecisionVariable.binary(2)
+    x3 = DecisionVariable.binary(3)
 
-#     instance = Instance.from_components(
-#         decision_variables=[x1, x2, x3],
-#         objective=x1 + 2*x2 + 3*x3,  # Should select x1=1 as it has lowest cost
-#         constraints=[],
-#         sense=Instance.MINIMIZE,
-#     )
+    instance = Instance.from_components(
+        decision_variables=[x1, x2, x3],
+        objective=x1 + 2*x2 + 3*x3,  # Should select x1=1 as it has lowest cost
+        constraints=[x1 + x2 + x3 == 1],  # Exactly one must be 1
+        sense=Instance.MINIMIZE,
+    )
 
-#     adapter = OMMXGurobipyAdapter(instance)
-#     model = adapter.solver_input
-#     model.optimize()
-#     state = adapter.decode_to_state(model)
+    adapter = OMMXGurobipyAdapter(instance)
+    model = adapter.solver_input
+    model.optimize()
+    state = adapter.decode_to_state(model)
 
-#     actual_entries = state.entries
-#     # Should select x1=1 as it has lowest coefficient in objective
-#     assert actual_entries[1] == pytest.approx(1)
-#     assert actual_entries[2] == pytest.approx(0)
-#     assert actual_entries[3] == pytest.approx(0)
-#     # Sum should be exactly 1 due to SOS1 constraint
-#     assert sum(actual_entries.values()) == pytest.approx(1)
+    actual_entries = state.entries
+    # Should select x1=1 as it has lowest coefficient in objective
+    assert actual_entries[1] == pytest.approx(1)
+    assert actual_entries[2] == pytest.approx(0)
+    assert actual_entries[3] == pytest.approx(0)
+    # Sum should be exactly 1 due to SOS1 constraint
+    assert sum(actual_entries.values()) == pytest.approx(1)
