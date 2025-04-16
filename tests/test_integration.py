@@ -310,7 +310,7 @@ def test_integration_with_sos1_constraint():
         sense=Instance.MAXIMIZE,
     )
 
-    # Add SOS1 constraint. Beacuse ommx does not support SOS1 constraints, we need to add it manually.
+    # Add SOS1 constraint. Because ommx does not support SOS1 constraints, we need to add it manually.
     # if you want to add SOS1 constraints automatically, please use the jijmodeling>=1.12.0
     hints = ConstraintHints(
         sos1_constraints=[
