@@ -3,6 +3,8 @@ import pytest
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
 from ommx.v1 import Constraint, Instance, DecisionVariable, Quadratic, Linear
+from ommx.v1.constraint_hints_pb2 import ConstraintHints
+from ommx.v1.sos1_pb2 import SOS1
 from ommx.testing import SingleFeasibleLPGenerator, DataType
 
 
@@ -254,29 +256,41 @@ def test_integration_feasible_constant_constraint():
     assert actual_entries[2] == pytest.approx(3)
 
 
-# def test_integration_sos1_constraint():
-#     """Test problem with SOS1 constraint"""
-#     # Test with three binary variables where exactly one must be 1
-#     x1 = DecisionVariable.binary(1)
-#     x2 = DecisionVariable.binary(2)
-#     x3 = DecisionVariable.binary(3)
+def test_integration_with_sos1_constraint():
+    """Test problem with SOS1 constraint"""
+    # Objective function: x1 + 2 * x2 + 3 * x3
+    # Constraints:
+    #     x1 + x2 + x3 <= 1
+    #     x1, x2, x3: binary
+    # Optimal solution: x1 = 0, x2 = 0, x3 = 1
+    x1 = DecisionVariable.binary(1)
+    x2 = DecisionVariable.binary(2)
+    x3 = DecisionVariable.binary(3)
 
-#     instance = Instance.from_components(
-#         decision_variables=[x1, x2, x3],
-#         objective=x1 + 2*x2 + 3*x3,  # Should select x1=1 as it has lowest cost
-#         constraints=[],
-#         sense=Instance.MINIMIZE,
-#     )
+    instance = Instance.from_components(
+        decision_variables=[x1, x2, x3],
+        objective=x1 + 2 * x2 + 3 * x3,
+        constraints=[x1 + x2 + x3 <= 1],
+        sense=Instance.MAXIMIZE,
+    )
 
-#     adapter = OMMXGurobipyAdapter(instance)
-#     model = adapter.solver_input
-#     model.optimize()
-#     state = adapter.decode_to_state(model)
+    # Add SOS1 constraint. Because ommx does not support SOS1 constraints, we need to add it manually.
+    # If you want to add SOS1 constraints automatically, please use the jijmodeling>=1.12.0
+    hints = ConstraintHints(
+        sos1_constraints=[
+            SOS1(binary_constraint_id=0, decision_variables=[1, 2, 3]),
+        ]
+    )
+    instance.raw.constraint_hints.MergeFrom(hints)
 
-#     actual_entries = state.entries
-#     # Should select x1=1 as it has lowest coefficient in objective
-#     assert actual_entries[1] == pytest.approx(1)
-#     assert actual_entries[2] == pytest.approx(0)
-#     assert actual_entries[3] == pytest.approx(0)
-#     # Sum should be exactly 1 due to SOS1 constraint
-#     assert sum(actual_entries.values()) == pytest.approx(1)
+    adapter = OMMXGurobipyAdapter(instance)
+    model = adapter.solver_input
+    model.optimize()
+    state = adapter.decode_to_state(model)
+
+    actual_entries = state.entries
+    assert actual_entries[1] == pytest.approx(0)
+    assert actual_entries[2] == pytest.approx(0)
+    assert actual_entries[3] == pytest.approx(1)
+    # Sum should be exactly 1 due to SOS1 constraint
+    assert sum(actual_entries.values()) == pytest.approx(1)
