@@ -305,7 +305,7 @@ def test_integration_with_sos1_constraint():
         decision_variables=[x1, x2, x3],
         objective=x1 + 2 * x2 + 3 * x3,  # Should select x3=1 as it has lowest cost
         constraints=[
-            x1 + x2 + x3 <= 4
+            x1 + x2 + x3 <= 1
         ],  # This constraint is a meaningless constraint. However, it is set in order to specify a constraint.
         sense=Instance.MAXIMIZE,
     )
