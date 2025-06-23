@@ -189,7 +189,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
         for constraint in self.instance.get_constraints():
             if constraint.id in excluded:
                 continue
-            
+
             # Check if the constraint function is polynomial
             if self._has_polynomial(constraint.function):
                 raise OMMXGurobipyAdapterError(
@@ -247,7 +247,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 )
 
         return expr
-    
+
     def _has_polynomial(self, function: Function) -> bool:
         """Check if the function has polynomial terms of degree 3 or higher."""
         for ids, _ in function.terms.items():
