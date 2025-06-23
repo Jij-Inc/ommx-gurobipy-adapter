@@ -6,23 +6,15 @@ from gurobipy import GRB
 import math
 
 from ommx.adapter import SolverAdapter, InfeasibleDetected, UnboundedDetected
-from ommx.v1 import (
-    Instance,
-    Solution,
-    DecisionVariable,
-    Constraint,
-    Function,
-    State,
-    Optimality,
-    ConstraintHints,
-)
-
+from ommx.v1 import Instance, Solution, DecisionVariable, Constraint
+from ommx.v1.function_pb2 import Function
+from ommx.v1.solution_pb2 import State, Optimality
+from ommx.v1.constraint_hints_pb2 import ConstraintHints
 
 from .exception import OMMXGurobipyAdapterError
 
 
 HintMode = Literal["disabled", "auto", "forced"]
-Context = Literal["objective function", "constraints"]
 
 
 class OMMXGurobipyAdapter(SolverAdapter):
@@ -82,7 +74,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
         solution = self.instance.evaluate(state)
 
         if status == GRB.OPTIMAL:
-            solution.optimality = Optimality.OPTIMALITY_OPTIMAL
+            solution.raw.optimality = Optimality.OPTIMALITY_OPTIMAL
 
         return solution
 
@@ -107,7 +99,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 )
 
             entries = {}
-            for var in self.instance.get_decision_variables():
+            for var in self.instance.raw.decision_variables:
                 variable = data.getVarByName(str(var.id))
                 if variable:
                     entries[var.id] = variable.X
@@ -117,7 +109,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
 
     def _set_decision_variables(self):
         """Set up decision variables in the Gurobi model."""
-        for var in self.instance.get_decision_variables():
+        for var in self.instance.raw.decision_variables:
             if var.kind == DecisionVariable.BINARY:
                 self.model.addVar(name=str(var.id), vtype=GRB.BINARY)
             elif var.kind == DecisionVariable.INTEGER:
@@ -146,13 +138,13 @@ class OMMXGurobipyAdapter(SolverAdapter):
             str(id): var
             for var, id in zip(
                 self.model.getVars(),
-                (var.id for var in self.instance.get_decision_variables()),
+                (var.id for var in self.instance.raw.decision_variables),
             )
         }
 
     def _set_objective(self):
         """Set up the objective function in the Gurobi model."""
-        objective = self.instance.objective
+        objective = self.instance.raw.objective
 
         # Set optimization direction
         if self.instance.sense == Instance.MAXIMIZE:
@@ -165,11 +157,22 @@ class OMMXGurobipyAdapter(SolverAdapter):
             )
 
         # Set objective function
-        self.model.setObjective(self._make_expr(objective, "objective function"))
+        if objective.HasField("constant"):
+            self.model.setObjective(objective.constant)
+        elif objective.HasField("linear"):
+            expr = self._make_linear_expr(objective)
+            self.model.setObjective(expr)
+        elif objective.HasField("quadratic"):
+            expr = self._make_quadratic_expr(objective)
+            self.model.setObjective(expr)
+        else:
+            raise OMMXGurobipyAdapterError(
+                "The objective function must be `constant`, `linear`, or `quadratic`."
+            )
 
     def _set_constraints(self):
         """Set up constraints in the Gurobi model."""
-        ommx_hints: ConstraintHints = self.instance.constraint_hints
+        ommx_hints: ConstraintHints = self.instance.raw.constraint_hints
         excluded = set()
 
         # Handle SOS1 constraints
@@ -182,41 +185,38 @@ class OMMXGurobipyAdapter(SolverAdapter):
             for sos1 in ommx_hints.sos1_constraints:
                 bid = sos1.binary_constraint_id
                 excluded.add(bid)
-                vars = [self.varname_map[str(v)] for v in sos1.variables]
+                vars = [self.varname_map[str(v)] for v in sos1.decision_variables]
                 self.model.addSOS(GRB.SOS_TYPE1, vars)
 
         # Handle regular constraints
-        for constraint in self.instance.get_constraints():
+        for constraint in self.instance.raw.constraints:
             if constraint.id in excluded:
                 continue
-            
-            # Check if the constraint function is polynomial
-            if self._has_polynomial(constraint.function):
-                raise OMMXGurobipyAdapterError(
-                    f"The constraints must be either `constant`, `linear` or `quadratic`. "
-                    f"Constraint ID: {constraint.id}"
-                )
 
-            # constの処理
-            if (
-                constraint.function.linear_terms == {}
-                and constraint.function.quadratic_terms == {}
-            ):
+            if constraint.function.HasField("linear"):
+                expr = self._make_linear_expr(constraint.function)
+            elif constraint.function.HasField("quadratic"):
+                expr = self._make_quadratic_expr(constraint.function)
+            elif constraint.function.HasField("constant"):
                 if constraint.equality == Constraint.EQUAL_TO_ZERO and math.isclose(
-                    constraint.function.constant_term, 0, abs_tol=1e-6
+                    constraint.function.constant, 0, abs_tol=1e-6
                 ):
                     continue
                 elif (
                     constraint.equality == Constraint.LESS_THAN_OR_EQUAL_TO_ZERO
-                    and constraint.function.constant_term <= 1e-6
+                    and constraint.function.constant <= 1e-6
                 ):
                     continue
                 else:
                     raise OMMXGurobipyAdapterError(
                         f"Infeasible constant constraint was found: id {constraint.id}"
                     )
-            # expr
-            expr = self._make_expr(constraint.function, "constraints")
+            else:
+                raise OMMXGurobipyAdapterError(
+                    f"Constraints must be either `constant`, `linear` or `quadratic`. "
+                    f"id: {constraint.id}, "
+                    f"type: {constraint.function.WhichOneof('function')}"
+                )
 
             if constraint.equality == Constraint.EQUAL_TO_ZERO:
                 self.model.addConstr(expr == 0, name=str(constraint.id))
@@ -228,29 +228,35 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     f"id: {constraint.id}, equality: {constraint.equality}"
                 )
 
-    def _make_expr(self, function: Function, context: Context) -> gp.QuadExpr:
-        """Create a Gurobi expression from an OMMX Function."""
-        # QuadExpr includes constant, linear, and quadratic terms, so expr is initialized as QuadExpr
+    def _make_linear_expr(self, function: Function) -> gp.LinExpr:
+        """Create a Gurobi linear expression from an OMMX Function."""
+        linear = function.linear
+        expr = gp.LinExpr()
+
+        for term in linear.terms:
+            var = self.varname_map[str(term.id)]
+            expr.add(var, term.coefficient)
+
+        expr.addConstant(linear.constant)
+        return expr
+
+    def _make_quadratic_expr(self, function: Function) -> gp.QuadExpr:
+        """Create a Gurobi quadratic expression from an OMMX Function."""
+        quad = function.quadratic
         expr = gp.QuadExpr()
-        for ids, coefficient in function.terms.items():
-            if len(ids) == 0:
-                expr.addConstant(coefficient)
-            elif len(ids) <= 2:
-                term = coefficient
-                for id in ids:
-                    var = self.varname_map[str(id)]
-                    term *= var
-                expr.add(term)
-            else:
-                raise OMMXGurobipyAdapterError(
-                    f"The {context} must be either `constant`, `linear` or `quadratic`."
-                )
+
+        # Add quadratic terms
+        for row, col, val in zip(quad.rows, quad.columns, quad.values):
+            var1 = self.varname_map[str(row)]
+            var2 = self.varname_map[str(col)]
+            expr.add(var1 * var2 * val)
+
+        # Add linear terms
+        for term in quad.linear.terms:
+            var = self.varname_map[str(term.id)]
+            expr.add(var * term.coefficient)
+
+        # Add constant
+        expr.addConstant(quad.linear.constant)
 
         return expr
-    
-    def _has_polynomial(self, function: Function) -> bool:
-        """Check if the function has polynomial terms of degree 3 or higher."""
-        for ids, _ in function.terms.items():
-            if len(ids) >= 3:
-                return True
-        return False
