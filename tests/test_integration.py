@@ -3,11 +3,11 @@ import pytest
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
 from ommx.v1 import (
-    Constraint,
     Instance,
+    Constraint,
     DecisionVariable,
-    Quadratic,
     Linear,
+    Quadratic,
     ConstraintHints,
     Sos1,
 )

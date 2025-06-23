@@ -8,11 +8,11 @@ import math
 from ommx.adapter import SolverAdapter, InfeasibleDetected, UnboundedDetected
 from ommx.v1 import (
     Instance,
-    Solution,
-    DecisionVariable,
     Constraint,
+    DecisionVariable,
     Function,
     State,
+    Solution,
     Optimality,
     ConstraintHints,
 )
