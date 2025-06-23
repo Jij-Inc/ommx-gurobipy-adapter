@@ -22,7 +22,6 @@ from .exception import OMMXGurobipyAdapterError
 
 
 HintMode = Literal["disabled", "auto", "forced"]
-Context = Literal["objective function", "constraints"]
 
 
 class OMMXGurobipyAdapter(SolverAdapter):
