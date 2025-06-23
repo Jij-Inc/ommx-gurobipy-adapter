@@ -250,9 +250,9 @@ class OMMXGurobipyAdapter(SolverAdapter):
 
     def _has_non_linear(self, function: Function) -> bool:
         """Check if the function has non linear terms of degree 3 or higher.
-        
-           Non linear are defined as not linear or quadratic. 
-           Refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
+
+        Non linear are defined as not linear or quadratic.
+        Refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
         """
         for ids, _ in function.terms.items():
             if len(ids) >= 3:
