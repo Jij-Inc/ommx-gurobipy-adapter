@@ -164,8 +164,17 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 f"Sense not supported: {self.instance.sense}"
             )
 
+        # Check if the objective function is non linear
+        # Non linear are defined as not linear or quadratic.
+        # For more details, refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
+        for ids, _ in objective.terms.items():
+            if len(ids) >= 3:
+                raise OMMXGurobipyAdapterError(
+                    "The objective function must be either `constant`, `linear` or `quadratic`. "
+                )
+
         # Set objective function
-        self.model.setObjective(self._make_expr(objective, "objective function"))
+        self.model.setObjective(self._make_expr(objective))
 
     def _set_constraints(self):
         """Set up constraints in the Gurobi model."""
@@ -190,7 +199,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
             if constraint.id in excluded:
                 continue
 
-            # Check if the constraint function is non linear
+            # Check if the constraints is non linear
             # Non linear are defined as not linear or quadratic.
             # For more details, refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
             for ids, _ in constraint.function.terms.items():
@@ -200,7 +209,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                         f"Constraint ID: {constraint.id}"
                     )
 
-            # constの処理
+            # Only constant case.
             if (
                 constraint.function.linear_terms == {}
                 and constraint.function.quadratic_terms == {}
@@ -218,8 +227,9 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     raise OMMXGurobipyAdapterError(
                         f"Infeasible constant constraint was found: id {constraint.id}"
                     )
-            # expr
-            expr = self._make_expr(constraint.function, "constraints")
+
+            # Create Gurobi expression for the constraint
+            expr = self._make_expr(constraint.function)
 
             if constraint.equality == Constraint.EQUAL_TO_ZERO:
                 self.model.addConstr(expr == 0, name=str(constraint.id))
@@ -231,7 +241,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     f"id: {constraint.id}, equality: {constraint.equality}"
                 )
 
-    def _make_expr(self, function: Function, context: Context) -> gp.QuadExpr:
+    def _make_expr(self, function: Function) -> gp.QuadExpr:
         """Create a Gurobi expression from an OMMX Function."""
         # QuadExpr includes constant, linear, and quadratic terms, so expr is initialized as QuadExpr
         expr = gp.QuadExpr()
@@ -244,9 +254,5 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     var = self.varname_map[str(id)]
                     term *= var
                 expr.add(term)
-            else:
-                raise OMMXGurobipyAdapterError(
-                    f"The {context} must be either `constant`, `linear` or `quadratic`."
-                )
 
         return expr
