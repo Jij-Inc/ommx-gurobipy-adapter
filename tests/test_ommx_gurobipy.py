@@ -1,6 +1,5 @@
 import pytest
-from ommx.v1 import Instance, DecisionVariable
-from ommx.v1.solution_pb2 import Optimality
+from ommx.v1 import Instance, DecisionVariable, Optimality
 
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
