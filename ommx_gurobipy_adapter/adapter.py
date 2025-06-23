@@ -20,6 +20,7 @@ from ommx.v1 import (
 
 from .exception import OMMXGurobipyAdapterError
 
+ABSOLUTE_TOLERANCE = 1e-6
 
 HintMode = Literal["disabled", "auto", "forced"]
 
@@ -214,12 +215,12 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 and constraint.function.quadratic_terms == {}
             ):
                 if constraint.equality == Constraint.EQUAL_TO_ZERO and math.isclose(
-                    constraint.function.constant_term, 0, abs_tol=1e-6
+                    constraint.function.constant_term, 0, abs_tol=ABSOLUTE_TOLERANCE
                 ):
                     continue
                 elif (
                     constraint.equality == Constraint.LESS_THAN_OR_EQUAL_TO_ZERO
-                    and constraint.function.constant_term <= 1e-6
+                    and constraint.function.constant_term <= ABSOLUTE_TOLERANCE
                 ):
                     continue
                 else:
