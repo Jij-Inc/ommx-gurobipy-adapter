@@ -273,12 +273,6 @@ def test_integration_with_sos1_constraint():
     x2 = DecisionVariable.binary(2)
     x3 = DecisionVariable.binary(3)
 
-    constraint = Constraint(
-        id=0,
-        function=x1 + x2 + x3,
-        equality=Constraint.LESS_THAN_OR_EQUAL_TO_ZERO,
-    )
-
     # Add SOS1 constraint. Because ommx does not support SOS1 constraints, we need to add it manually.
     # If you want to add SOS1 constraints automatically, please use the jijmodeling>=1.12.0
     hints = ConstraintHints(
@@ -290,7 +284,7 @@ def test_integration_with_sos1_constraint():
     instance = Instance.from_components(
         decision_variables=[x1, x2, x3],
         objective=x1 + 2 * x2 + 3 * x3,
-        constraints=[constraint],
+        constraints=[x1 + x2 + x3 <= 1],
         sense=Instance.MAXIMIZE,
         constraint_hints=hints,
     )
