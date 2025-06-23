@@ -191,11 +191,14 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 continue
 
             # Check if the constraint function is non linear
-            if self._has_non_linear(constraint.function):
-                raise OMMXGurobipyAdapterError(
-                    f"The constraints must be either `constant`, `linear` or `quadratic`. "
-                    f"Constraint ID: {constraint.id}"
-                )
+            # Non linear are defined as not linear or quadratic.
+            # For more details, refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
+            for ids, _ in constraint.function.terms.items():
+                if len(ids) >= 3:
+                    raise OMMXGurobipyAdapterError(
+                        f"The constraints must be either `constant`, `linear` or `quadratic`. "
+                        f"Constraint ID: {constraint.id}"
+                    )
 
             # constの処理
             if (
@@ -247,14 +250,3 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 )
 
         return expr
-
-    def _has_non_linear(self, function: Function) -> bool:
-        """Check if the function has non linear terms of degree 3 or higher.
-
-        Non linear are defined as not linear or quadratic.
-        Refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
-        """
-        for ids, _ in function.terms.items():
-            if len(ids) >= 3:
-                return True
-        return False
