@@ -170,7 +170,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
         for ids, _ in objective.terms.items():
             if len(ids) >= 3:
                 raise OMMXGurobipyAdapterError(
-                    "The objective function must be either `constant`, `linear` or `quadratic`. "
+                    "The objective function must be either `constant`, `linear` or `quadratic`."
                 )
 
         # Set objective function
