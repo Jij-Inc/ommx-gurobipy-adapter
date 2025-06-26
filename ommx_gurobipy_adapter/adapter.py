@@ -205,7 +205,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
             for ids, _ in constraint.function.terms.items():
                 if len(ids) >= 3:
                     raise OMMXGurobipyAdapterError(
-                        f"The constraints must be either `constant`, `linear` or `quadratic`. "
+                        f"The constraints must be either `constant`, `linear` or `quadratic`."
                         f"Constraint ID: {constraint.id}"
                     )
 
