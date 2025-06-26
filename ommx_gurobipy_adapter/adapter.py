@@ -167,11 +167,10 @@ class OMMXGurobipyAdapter(SolverAdapter):
         # Check if the objective function is non linear
         # Non linear are defined as not linear or quadratic.
         # For more details, refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
-        for ids, _ in objective.terms.items():
-            if len(ids) >= 3:
-                raise OMMXGurobipyAdapterError(
-                    "The objective function must be either `constant`, `linear` or `quadratic`."
-                )
+        if objective.degree() >= 3:
+            raise OMMXGurobipyAdapterError(
+                "The objective function must be either `constant`, `linear` or `quadratic`."
+            )
 
         # Set objective function
         self.model.setObjective(self._make_expr(objective))
