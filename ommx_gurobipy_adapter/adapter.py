@@ -246,8 +246,10 @@ class OMMXGurobipyAdapter(SolverAdapter):
         # QuadExpr includes constant, linear, and quadratic terms, so expr is initialized as QuadExpr
         expr = gp.QuadExpr()
         for ids, coefficient in function.terms.items():
+            # Terms with no IDs represent constant terms.
             if len(ids) == 0:
                 expr.addConstant(coefficient)
+            # Terms with one ID represent linear terms, and terms with two IDs represent quadratic terms.
             elif len(ids) <= 2:
                 term = coefficient
                 for id in ids:
