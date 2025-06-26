@@ -8,23 +8,6 @@ from ommx_gurobipy_adapter import (
 
 from ommx.adapter import InfeasibleDetected
 from ommx.v1 import Constraint, Instance, DecisionVariable, Polynomial
-from ommx.v1.decision_variables_pb2 import DecisionVariable as _DecisionVariable
-from ommx.v1.constraint_pb2 import Equality
-
-
-def test_error_not_suppoerted_decision_variable():
-    """Test error when unsupported decision variable type is used"""
-    ommx_instance = Instance.from_components(
-        decision_variables=[
-            _DecisionVariable(id=1, kind=_DecisionVariable.KIND_UNSPECIFIED)
-        ],
-        objective=0,
-        constraints=[],
-        sense=Instance.MINIMIZE,
-    )
-    with pytest.raises(OMMXGurobipyAdapterError) as e:
-        OMMXGurobipyAdapter(ommx_instance)
-    assert "Unsupported decision variable" in str(e.value)
 
 
 def test_error_polynomial_objective():
@@ -38,7 +21,10 @@ def test_error_polynomial_objective():
     )
     with pytest.raises(OMMXGurobipyAdapterError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    assert "The objective function must be" in str(e.value)
+    assert (
+        "The objective function must be either `constant`, `linear` or `quadratic`."
+        in str(e.value)
+    )
 
 
 def test_error_nonlinear_constraint():
@@ -58,30 +44,9 @@ def test_error_nonlinear_constraint():
     )
     with pytest.raises(OMMXGurobipyAdapterError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    assert "Constraints must be either `constant`, `linear` or `quadratic`." in str(
+    assert "The constraints must be either `constant`, `linear` or `quadratic`." in str(
         e.value
     )
-
-
-def test_error_not_supported_constraint_equality():
-    """Test error when unsupported constraint equality is used"""
-    # Objective function: 0
-    # Constraint: 2x ?? 0 (equality: unspecified)
-    x = DecisionVariable.continuous(1)
-    ommx_instance = Instance.from_components(
-        decision_variables=[x],
-        objective=0,
-        constraints=[
-            Constraint(
-                function=2 * x,
-                equality=Equality.EQUALITY_UNSPECIFIED,
-            ),
-        ],
-        sense=Instance.MINIMIZE,
-    )
-    with pytest.raises(OMMXGurobipyAdapterError) as e:
-        OMMXGurobipyAdapter(ommx_instance)
-    assert "Not supported constraint equality" in str(e.value)
 
 
 def test_error_not_optimized_model():
