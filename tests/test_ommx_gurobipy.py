@@ -3,8 +3,6 @@ from ommx.v1 import Instance, DecisionVariable, Optimality
 
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
-ABSOLUTE_TOLERANCE = 1e-6
-
 
 def test_solution_optimality():
     """Test that optimal solutions are correctly marked as optimal"""
@@ -37,9 +35,9 @@ def test_basic_functionality():
     solution = OMMXGurobipyAdapter.solve(instance)
 
     # Optimal solution should be x=0, y=5
-    assert solution.state.entries[1] == pytest.approx(0, abs=ABSOLUTE_TOLERANCE)
-    assert solution.state.entries[2] == pytest.approx(5, abs=ABSOLUTE_TOLERANCE)
-    assert solution.objective == pytest.approx(10, abs=ABSOLUTE_TOLERANCE)  # 0 + 2*5
+    assert solution.state.entries[1] == pytest.approx(0, abs=1e-6)
+    assert solution.state.entries[2] == pytest.approx(5)
+    assert solution.objective == pytest.approx(10)  # 0 + 2*5
 
 
 def test_multi_objective_handling():
@@ -56,5 +54,5 @@ def test_multi_objective_handling():
     solution = OMMXGurobipyAdapter.solve(instance)
 
     # Should maximize x to its upper bound
-    assert solution.state.entries[1] == pytest.approx(1, abs=ABSOLUTE_TOLERANCE)
-    assert solution.objective == pytest.approx(1, abs=ABSOLUTE_TOLERANCE)
+    assert solution.state.entries[1] == pytest.approx(1)
+    assert solution.objective == pytest.approx(1)
