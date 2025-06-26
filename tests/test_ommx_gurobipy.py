@@ -5,6 +5,7 @@ from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
 ABSOLUTE_TOLERANCE = 1e-6
 
+
 def test_solution_optimality():
     """Test that optimal solutions are correctly marked as optimal"""
     x = DecisionVariable.integer(1, lower=0, upper=5)
