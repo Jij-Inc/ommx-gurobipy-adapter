@@ -208,10 +208,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 )
 
             # Only constant case.
-            if (
-                constraint.function.linear_terms == {}
-                and constraint.function.quadratic_terms == {}
-            ):
+            if constraint.function.degree() == 0:
                 if constraint.equality == Constraint.EQUAL_TO_ZERO and math.isclose(
                     constraint.function.constant_term, 0, abs_tol=ABSOLUTE_TOLERANCE
                 ):
