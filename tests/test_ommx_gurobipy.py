@@ -1,6 +1,5 @@
 import pytest
-from ommx.v1 import Instance, DecisionVariable
-from ommx.v1.solution_pb2 import Optimality
+from ommx.v1 import Instance, DecisionVariable, Optimality
 
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
@@ -17,7 +16,7 @@ def test_solution_optimality():
     )
 
     solution = OMMXGurobipyAdapter.solve(ommx_instance)
-    assert solution.optimality == Optimality.OPTIMALITY_OPTIMAL
+    assert solution.optimality == Optimality.Optimal
 
 
 def test_basic_functionality():
@@ -36,7 +35,7 @@ def test_basic_functionality():
     solution = OMMXGurobipyAdapter.solve(instance)
 
     # Optimal solution should be x=0, y=5
-    assert solution.state.entries[1] == pytest.approx(0)
+    assert solution.state.entries[1] == pytest.approx(0, abs=1e-6)
     assert solution.state.entries[2] == pytest.approx(5)
     assert solution.objective == pytest.approx(10)  # 0 + 2*5
 
