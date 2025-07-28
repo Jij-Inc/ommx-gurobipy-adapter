@@ -59,6 +59,7 @@ def test_multi_objective_handling():
 
 
 def test_partial_evaluate():
+    """Test that the adapter correctly handles partially evaluated instances with used_decision_variables"""
     x = [DecisionVariable.binary(i, name="x", subscripts=[i]) for i in range(3)]
     instance = Instance.from_components(
         decision_variables=x,
@@ -84,6 +85,7 @@ def test_partial_evaluate():
 
 
 def test_relax_constraint():
+    """Test that the adapter correctly handles constraint relaxation and irrelevant variable identification"""
     x = [DecisionVariable.binary(i, name="x", subscripts=[i]) for i in range(3)]
     instance = Instance.from_components(
         decision_variables=x,
