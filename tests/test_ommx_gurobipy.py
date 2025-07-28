@@ -57,6 +57,7 @@ def test_multi_objective_handling():
     assert solution.state.entries[1] == pytest.approx(1)
     assert solution.objective == pytest.approx(1)
 
+
 def test_partial_evaluate():
     x = [DecisionVariable.binary(i, name="x", subscripts=[i]) for i in range(3)]
     instance = Instance.from_components(
