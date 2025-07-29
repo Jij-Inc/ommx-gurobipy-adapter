@@ -64,7 +64,7 @@ def test_partial_evaluate():
     instance = Instance.from_components(
         decision_variables=x,
         objective=x[0] + x[1] + x[2],
-        constraints=[(x[0] + x[1] + x[2] <= 1).set_id(0)],  # one-hot constraint
+        constraints=[(x[0] + x[1] + x[2] <= 1).set_id(0)],
         sense=Instance.MINIMIZE,
     )
     assert instance.used_decision_variables == x
