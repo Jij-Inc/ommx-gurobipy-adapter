@@ -107,7 +107,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 )
 
             entries = {}
-            for var in self.instance.decision_variables:
+            for var in self.instance.used_decision_variables:
                 variable = data.getVarByName(str(var.id))
                 if variable:
                     entries[var.id] = variable.X
@@ -117,7 +117,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
 
     def _set_decision_variables(self):
         """Set up decision variables in the Gurobi model."""
-        for var in self.instance.decision_variables:
+        for var in self.instance.used_decision_variables:
             if var.kind == DecisionVariable.BINARY:
                 self.model.addVar(name=str(var.id), vtype=GRB.BINARY)
             elif var.kind == DecisionVariable.INTEGER:
@@ -146,7 +146,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
             str(id): var
             for var, id in zip(
                 self.model.getVars(),
-                (var.id for var in self.instance.decision_variables),
+                (var.id for var in self.instance.used_decision_variables),
             )
         }
 
