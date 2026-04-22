@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Literal
 
 import gurobipy as gp
 from gurobipy import GRB
@@ -7,6 +6,7 @@ import math
 
 from ommx.adapter import SolverAdapter, InfeasibleDetected, UnboundedDetected
 from ommx.v1 import (
+    AdditionalCapability,
     Instance,
     Constraint,
     DecisionVariable,
@@ -14,7 +14,6 @@ from ommx.v1 import (
     State,
     Solution,
     Optimality,
-    ConstraintHints,
 )
 
 
@@ -22,20 +21,18 @@ from .exception import OMMXGurobipyAdapterError
 
 ABSOLUTE_TOLERANCE = 1e-6
 
-HintMode = Literal["disabled", "auto", "forced"]
-
 
 class OMMXGurobipyAdapter(SolverAdapter):
-    use_sos1: HintMode
+    ADDITIONAL_CAPABILITIES = frozenset(
+        {
+            AdditionalCapability.Indicator,
+            AdditionalCapability.Sos1,
+        }
+    )
 
-    def __init__(
-        self,
-        ommx_instance: Instance,
-        *,
-        use_sos1: Literal["disabled", "auto", "forced"] = "auto",
-    ):
+    def __init__(self, ommx_instance: Instance):
+        super().__init__(ommx_instance)
         self.instance = ommx_instance
-        self.use_sos1 = use_sos1
         self.model = gp.Model()
         self.model.setParam("OutputFlag", 0)  # Suppress output
 
@@ -44,20 +41,14 @@ class OMMXGurobipyAdapter(SolverAdapter):
         self._set_constraints()
 
     @classmethod
-    def solve(
-        cls,
-        ommx_instance: Instance,
-        *,
-        use_sos1: Literal["disabled", "auto", "forced"] = "auto",
-    ) -> Solution:
+    def solve(cls, ommx_instance: Instance) -> Solution:
         """
         Solve the given ommx.v1.Instance using Gurobi, returning an ommx.v1.Solution.
 
         :param ommx_instance: The ommx.v1.Instance to solve.
-        :param use_sos1: How to handle SOS1 constraints ("disabled", "auto", or "forced")
         :return: The solution as an ommx.v1.Solution object
         """
-        adapter = cls(ommx_instance, use_sos1=use_sos1)
+        adapter = cls(ommx_instance)
         model = adapter.solver_input
         model.optimize()
         return adapter.decode(model)
@@ -177,34 +168,20 @@ class OMMXGurobipyAdapter(SolverAdapter):
 
     def _set_constraints(self):
         """Set up constraints in the Gurobi model."""
-        ommx_hints: ConstraintHints = self.instance.constraint_hints
-        excluded = set()
-
-        # Handle SOS1 constraints
-        if self.use_sos1 != "disabled":
-            if self.use_sos1 == "forced" and len(ommx_hints.sos1_constraints) == 0:
-                raise OMMXGurobipyAdapterError(
-                    "No SOS1 constraints were found, but `use_sos1` is set to `forced`."
-                )
-
-            for sos1 in ommx_hints.sos1_constraints:
-                bid = sos1.binary_constraint_id
-                excluded.add(bid)
-                vars = [self.varname_map[str(v)] for v in sos1.variables]
-                self.model.addSOS(GRB.SOS_TYPE1, vars)
+        # Handle SOS1 constraints (first-class in ommx v3)
+        for sos1 in self.instance.sos1_constraints.values():
+            vars = [self.varname_map[str(v)] for v in sos1.variables]
+            self.model.addSOS(GRB.SOS_TYPE1, vars)
 
         # Handle regular constraints
-        for constraint in self.instance.constraints:
-            if constraint.id in excluded:
-                continue
-
+        for cid, constraint in self.instance.constraints.items():
             # Check if the constraints is non linear
             # Non linear are defined as not linear or quadratic.
             # For more details, refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
             if constraint.function.degree() >= 3:
                 raise OMMXGurobipyAdapterError(
                     f"The constraints must be either `constant`, `linear` or `quadratic`."
-                    f"Constraint ID: {constraint.id}"
+                    f"Constraint ID: {cid}"
                 )
 
             # Only constant case.
@@ -220,21 +197,65 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     continue
                 else:
                     raise OMMXGurobipyAdapterError(
-                        f"Infeasible constant constraint was found: id {constraint.id}"
+                        f"Infeasible constant constraint was found: id {cid}"
                     )
 
             # Create Gurobi expression for the constraint
             expr = self._make_expr(constraint.function)
 
             if constraint.equality == Constraint.EQUAL_TO_ZERO:
-                self.model.addConstr(expr == 0, name=str(constraint.id))
+                self.model.addConstr(expr == 0, name=str(cid))
             elif constraint.equality == Constraint.LESS_THAN_OR_EQUAL_TO_ZERO:
-                self.model.addConstr(expr <= 0, name=str(constraint.id))
+                self.model.addConstr(expr <= 0, name=str(cid))
             else:
                 raise OMMXGurobipyAdapterError(
                     f"Not supported constraint equality: "
-                    f"id: {constraint.id}, equality: {constraint.equality}"
+                    f"id: {cid}, equality: {constraint.equality}"
                 )
+
+        # Handle indicator constraints (binvar = 1 => f(x) <= 0 or = 0)
+        for ind_id, indicator in self.instance.indicator_constraints.items():
+            f = indicator.function
+            degree = f.degree()
+            if degree >= 2:
+                raise OMMXGurobipyAdapterError(
+                    f"Indicator constraints must be linear. "
+                    f"id: {ind_id}, degree: {degree}"
+                )
+
+            if degree == 0:
+                # When the indicator is active, the constant constraint must hold.
+                constant_value = f.constant_term
+                is_feasible = (
+                    indicator.equality == Constraint.EQUAL_TO_ZERO
+                    and math.isclose(constant_value, 0, abs_tol=ABSOLUTE_TOLERANCE)
+                ) or (
+                    indicator.equality == Constraint.LESS_THAN_OR_EQUAL_TO_ZERO
+                    and constant_value <= ABSOLUTE_TOLERANCE
+                )
+                if is_feasible:
+                    continue
+                # Otherwise the indicator must be forced off.
+                binvar = self.varname_map[str(indicator.indicator_variable_id)]
+                self.model.addConstr(binvar == 0, name=f"ind_{ind_id}_forced_off")
+                continue
+
+            binvar = self.varname_map[str(indicator.indicator_variable_id)]
+            lhs = self._make_linear_expr(f)
+
+            if indicator.equality == Constraint.EQUAL_TO_ZERO:
+                sense = GRB.EQUAL
+            elif indicator.equality == Constraint.LESS_THAN_OR_EQUAL_TO_ZERO:
+                sense = GRB.LESS_EQUAL
+            else:
+                raise OMMXGurobipyAdapterError(
+                    f"Not supported indicator constraint equality: "
+                    f"id: {ind_id}, equality: {indicator.equality}"
+                )
+
+            self.model.addGenConstrIndicator(
+                binvar, True, lhs, sense, 0.0, name=f"ind_{ind_id}"
+            )
 
     def _make_expr(self, function: Function) -> gp.QuadExpr:
         """Create a Gurobi expression from an OMMX Function."""
@@ -253,3 +274,11 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 expr.add(term)
 
         return expr
+
+    def _make_linear_expr(self, function: Function) -> gp.LinExpr:
+        """Create a Gurobi linear expression from a linear/constant OMMX Function."""
+        terms = gp.quicksum(
+            coeff * self.varname_map[str(var_id)]
+            for var_id, coeff in function.linear_terms.items()
+        )
+        return terms + function.constant_term

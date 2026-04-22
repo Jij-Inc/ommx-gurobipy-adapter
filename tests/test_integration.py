@@ -8,8 +8,7 @@ from ommx.v1 import (
     DecisionVariable,
     Linear,
     Quadratic,
-    ConstraintHints,
-    Sos1,
+    Sos1Constraint,
 )
 from ommx.testing import SingleFeasibleLPGenerator, DataType
 
@@ -59,10 +58,10 @@ def test_integration_milp():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 - x2,
-        constraints=[
-            3 * x1 - x2 <= 6,
-            -x1 + 3 * x2 <= 6,
-        ],
+        constraints={
+            0: 3 * x1 - x2 <= 6,
+            1: -x1 + 3 * x2 <= 6,
+        },
         sense=Instance.MINIMIZE,
     )
 
@@ -86,7 +85,7 @@ def test_integration_binary():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 + x2,
-        constraints=[],
+        constraints={},
         sense=Instance.MINIMIZE,
     )
 
@@ -110,7 +109,7 @@ def test_integration_maximize():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 + x2,
-        constraints=[],
+        constraints={},
         sense=Instance.MAXIMIZE,
     )
 
@@ -139,7 +138,7 @@ def test_integration_constant_objective():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=0,
-        constraints=[x1 + x2 - 5 == 0],
+        constraints={0: x1 + x2 - 5 == 0},
         sense=Instance.MINIMIZE,
     )
 
@@ -172,7 +171,7 @@ def test_integration_quadratic_objective():
             columns=[1, 2],
             values=[1, 1],
         ),
-        constraints=[x1 + x2 == 4],
+        constraints={0: x1 + x2 == 4},
     )
 
     adapter = OMMXGurobipyAdapter(instance)
@@ -201,8 +200,8 @@ def test_integration_quadratic_constraint():
         sense=Instance.MINIMIZE,
         decision_variables=[x1, x2],
         objective=-x1 - x2,
-        constraints=[
-            Constraint(
+        constraints={
+            0: Constraint(
                 function=Quadratic(
                     columns=[1, 2],
                     rows=[1, 2],
@@ -211,7 +210,7 @@ def test_integration_quadratic_constraint():
                 ),
                 equality=Constraint.LESS_THAN_OR_EQUAL_TO_ZERO,
             ),
-        ],
+        },
     )
 
     adapter = OMMXGurobipyAdapter(instance)
@@ -241,14 +240,14 @@ def test_integration_feasible_constant_constraint():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 - x2,
-        constraints=[
-            3 * x1 - x2 <= 6,
-            -x1 + 3 * x2 <= 6,
-            Constraint(
+        constraints={
+            0: 3 * x1 - x2 <= 6,
+            1: -x1 + 3 * x2 <= 6,
+            2: Constraint(
                 function=-1,
                 equality=Constraint.LESS_THAN_OR_EQUAL_TO_ZERO,
             ),
-        ],
+        },
         sense=Instance.MINIMIZE,
     )
 
@@ -264,35 +263,21 @@ def test_integration_feasible_constant_constraint():
 
 def test_integration_with_sos1_constraint():
     """Test problem with SOS1 constraint"""
-    # Objective function: x1 + 2 * x2 + 3 * x3
+    # Objective function: x1 + 2 * x2 + 3 * x3 (maximize)
     # Constraints:
-    #     x1 + x2 + x3 <= 1
+    #     SOS1(x1, x2, x3) -- at most one may be non-zero
     #     x1, x2, x3: binary
     # Optimal solution: x1 = 0, x2 = 0, x3 = 1
     x1 = DecisionVariable.binary(1)
     x2 = DecisionVariable.binary(2)
     x3 = DecisionVariable.binary(3)
 
-    constraint = Constraint(
-        id=0,
-        function=x1 + x2 + x3,
-        equality=Constraint.LESS_THAN_OR_EQUAL_TO_ZERO,
-    )
-
-    # Add SOS1 constraint. Because ommx does not support SOS1 constraints, we need to add it manually.
-    # If you want to add SOS1 constraints automatically, please use the jijmodeling>=1.12.0
-    hints = ConstraintHints(
-        sos1_constraints=[
-            Sos1(binary_constraint_id=0, variables=[1, 2, 3], big_m_constraint_ids=[]),
-        ]
-    )
-
     instance = Instance.from_components(
         decision_variables=[x1, x2, x3],
         objective=x1 + 2 * x2 + 3 * x3,
-        constraints=[constraint],
+        constraints={},
+        sos1_constraints={0: Sos1Constraint(variables=[1, 2, 3])},
         sense=Instance.MAXIMIZE,
-        constraint_hints=hints,
     )
 
     adapter = OMMXGurobipyAdapter(instance)
