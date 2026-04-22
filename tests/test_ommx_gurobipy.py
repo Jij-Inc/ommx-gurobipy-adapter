@@ -11,7 +11,7 @@ def test_solution_optimality():
     ommx_instance = Instance.from_components(
         decision_variables=[x, y],
         objective=x + y,
-        constraints=[],
+        constraints={},
         sense=Instance.MAXIMIZE,
     )
 
@@ -28,7 +28,7 @@ def test_basic_functionality():
     instance = Instance.from_components(
         decision_variables=[x, y],
         objective=x + 2 * y,
-        constraints=[x + y <= 5],
+        constraints={0: x + y <= 5},
         sense=Instance.MAXIMIZE,
     )
 
@@ -47,7 +47,7 @@ def test_multi_objective_handling():
     instance = Instance.from_components(
         decision_variables=[x],
         objective=x,  # Primary objective: maximize x
-        constraints=[],
+        constraints={},
         sense=Instance.MAXIMIZE,
     )
 
@@ -64,7 +64,7 @@ def test_partial_evaluate():
     instance = Instance.from_components(
         decision_variables=x,
         objective=x[0] + x[1] + x[2],
-        constraints=[(x[0] + x[1] + x[2] <= 1).set_id(0)],
+        constraints={0: x[0] + x[1] + x[2] <= 1},
         sense=Instance.MINIMIZE,
     )
     assert instance.used_decision_variables == x
@@ -90,7 +90,7 @@ def test_relax_constraint():
     instance = Instance.from_components(
         decision_variables=x,
         objective=x[0] + x[1],
-        constraints=[(x[0] + 2 * x[1] <= 1).set_id(0), (x[1] + x[2] <= 1).set_id(1)],
+        constraints={0: x[0] + 2 * x[1] <= 1, 1: x[1] + x[2] <= 1},
         sense=Instance.MINIMIZE,
     )
 
