@@ -153,9 +153,7 @@ def test_bench_sos1_on_c_with_delta_with_card(
 
 
 @pytest.mark.benchmark
-def test_bench_sos1_on_delta(
-    benchmark, sos1_on_delta_models: List[gp.Model]
-) -> None:
+def test_bench_sos1_on_delta(benchmark, sos1_on_delta_models: List[gp.Model]) -> None:
     benchmark(_optimize_all, sos1_on_delta_models)
 
 
