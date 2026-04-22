@@ -17,10 +17,10 @@ This package provides an adapter for [Gurobi](https://www.gurobi.com/) from [OMM
 
 ## Prerequisites
 
-- Python >= 3.9
+- Python >= 3.10
 - Gurobi Optimizer and valid license
-- gurobipy >= 10.0.0
-- ommx >= 1.8.4
+- gurobipy >= 12.0.1
+- ommx >= 3.0.0a2
 
 ## Installation
 
@@ -46,9 +46,9 @@ x2 = DecisionVariable.continuous(2, lower=0, upper=5)
 instance = Instance.from_components(
     decision_variables=[x1, x2],
     objective=x1 + 2*x2,
-    constraints=[
-        x1 + x2 <= 5,  # Linear constraint
-    ],
+    constraints={
+        0: x1 + x2 <= 5,  # Linear constraint
+    },
     sense=Instance.MAXIMIZE,
 )
 
