@@ -180,7 +180,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
             # For more details, refer to https://docs.gurobi.com/projects/optimizer/en/current/reference/python/nlexpr.html
             if constraint.function.degree() >= 3:
                 raise OMMXGurobipyAdapterError(
-                    f"The constraints must be either `constant`, `linear` or `quadratic`."
+                    f"The constraints must be either `constant`, `linear` or `quadratic`. "
                     f"Constraint ID: {cid}"
                 )
 
