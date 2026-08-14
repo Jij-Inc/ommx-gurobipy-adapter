@@ -1,37 +1,84 @@
 from __future__ import annotations
 
+import math
+from typing import ClassVar
+
 import gurobipy as gp
 from gurobipy import GRB
-import math
-
-from ommx.adapter import SolverAdapter, InfeasibleDetected, UnboundedDetected
-from ommx.v1 import (
-    AdditionalCapability,
-    Instance,
+from ommx import (
     Constraint,
+    DegreeBound,
     DecisionVariable,
+    Equality,
     Function,
-    State,
-    Solution,
+    Instance,
+    InstanceClass,
+    InstanceClassClause,
+    Kind,
     Optimality,
+    PreparationPolicy,
+    Sense,
+    Solution,
+    SpecialConstraintKind,
+    SpecialConstraintPreparation,
+    State,
 )
-
+from ommx.adapter import (
+    DiagnosticsSink,
+    InfeasibleDetected,
+    SolverAdapter,
+    UnboundedDetected,
+)
 
 from .exception import OMMXGurobipyAdapterError
 
 ABSOLUTE_TOLERANCE = 1e-6
 
+_QUADRATIC_REGULAR_CONSTRAINT_DEGREE_BOUNDS = {
+    Equality.EqualToZero: DegreeBound.at_most(2),
+    Equality.LessThanOrEqualToZero: DegreeBound.at_most(2),
+}
+_LINEAR_INDICATOR_CONSTRAINT_DEGREE_BOUNDS = {
+    Equality.EqualToZero: DegreeBound.at_most(1),
+    Equality.LessThanOrEqualToZero: DegreeBound.at_most(1),
+}
+
 
 class OMMXGurobipyAdapter(SolverAdapter):
-    ADDITIONAL_CAPABILITIES = frozenset(
-        {
-            AdditionalCapability.Indicator,
-            AdditionalCapability.Sos1,
-        }
+    INPUT_CLASS: ClassVar[InstanceClass | None] = InstanceClass(
+        [
+            InstanceClassClause(
+                label="gurobi-quadratic-mip",
+                allowed_variable_kinds={Kind.Binary, Kind.Integer, Kind.Continuous},
+                objective_degree_bound=DegreeBound.at_most(2),
+                regular_constraint_degree_bounds=(
+                    _QUADRATIC_REGULAR_CONSTRAINT_DEGREE_BOUNDS
+                ),
+                indicator_constraint_degree_bounds=(
+                    _LINEAR_INDICATOR_CONSTRAINT_DEGREE_BOUNDS
+                ),
+                allows_sos1=True,
+                allowed_senses={Sense.Minimize, Sense.Maximize},
+            )
+        ]
     )
 
+    @classmethod
+    def recommended_preparation_policy(cls) -> PreparationPolicy:
+        """Recommend lowering OneHot constraints before using Gurobi.
+
+        Gurobi accepts Indicator and SOS1 constraints directly, so this
+        recommendation preserves those families and lowers only OneHot
+        constraints. The returned policy is fresh and caller-editable.
+        """
+        return PreparationPolicy(
+            special_constraints=SpecialConstraintPreparation.lower_special_constraints(
+                kinds={SpecialConstraintKind.OneHot}
+            )
+        )
+
     def __init__(self, ommx_instance: Instance):
-        super().__init__(ommx_instance)
+        self.require_applicable(ommx_instance)
         self.instance = ommx_instance
         self.model = gp.Model()
         self.model.setParam("OutputFlag", 0)  # Suppress output
@@ -41,13 +88,20 @@ class OMMXGurobipyAdapter(SolverAdapter):
         self._set_constraints()
 
     @classmethod
-    def solve(cls, ommx_instance: Instance) -> Solution:
+    def solve(
+        cls,
+        ommx_instance: Instance,
+        *,
+        diagnostics: DiagnosticsSink | None = None,
+    ) -> Solution:
         """
-        Solve the given ommx.v1.Instance using Gurobi, returning an ommx.v1.Solution.
+        Solve the given ommx.Instance using Gurobi, returning an ommx.Solution.
 
-        :param ommx_instance: The ommx.v1.Instance to solve.
-        :return: The solution as an ommx.v1.Solution object
+        :param ommx_instance: The ommx.Instance to solve.
+        :param diagnostics: Reserved diagnostics sink; currently unused.
+        :return: The solution as an ommx.Solution object
         """
+        _ = diagnostics
         adapter = cls(ommx_instance)
         model = adapter.solver_input
         model.optimize()
@@ -59,7 +113,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
         return self.model
 
     def decode(self, data: gp.Model) -> Solution:
-        """Convert optimized Gurobi Model to ommx.v1.Solution."""
+        """Convert optimized Gurobi Model to ommx.Solution."""
 
         status = data.Status
 
@@ -78,7 +132,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
         return solution
 
     def decode_to_state(self, data: gp.Model) -> State:
-        """Create an ommx.v1.State from an optimized Gurobi Model."""
+        """Create an ommx.State from an optimized Gurobi Model."""
 
         if data.Status == GRB.LOADED:
             raise OMMXGurobipyAdapterError(

@@ -1,5 +1,5 @@
 import pytest
-from ommx.v1 import Instance, DecisionVariable, Optimality
+from ommx import Instance, DecisionVariable, Optimality
 
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
@@ -15,7 +15,7 @@ def test_solution_optimality():
         sense=Instance.MAXIMIZE,
     )
 
-    solution = OMMXGurobipyAdapter.solve(ommx_instance)
+    solution = OMMXGurobipyAdapter.solve(ommx_instance, diagnostics=None)
     assert solution.optimality == Optimality.Optimal
 
 
@@ -97,7 +97,7 @@ def test_relax_constraint():
     assert instance.used_decision_variables == x
     instance.relax_constraint(1, "relax")
     # id for x[2] is listed as irrelevant
-    assert instance.decision_variable_analysis().irrelevant() == {x[2].id}
+    assert instance.irrelevant_decision_variable_ids() == {x[2].id}
 
     solution = OMMXGurobipyAdapter.solve(instance)
     # x[2] is still present as part of the evaluate/decoding process but has a value of 0

@@ -6,8 +6,15 @@ from ommx_gurobipy_adapter import (
     OMMXGurobipyAdapter,
 )
 
-from ommx.adapter import InfeasibleDetected
-from ommx.v1 import Constraint, Instance, DecisionVariable, Polynomial
+from ommx import (
+    Constraint,
+    DecisionVariable,
+    DegreeBound,
+    Instance,
+    InstanceClassMismatch,
+    Polynomial,
+)
+from ommx.adapter import AdapterNotApplicableError, InfeasibleDetected
 
 
 def test_error_polynomial_objective():
@@ -19,12 +26,14 @@ def test_error_polynomial_objective():
         constraints={},
         sense=Instance.MINIMIZE,
     )
-    with pytest.raises(OMMXGurobipyAdapterError) as e:
+    with pytest.raises(AdapterNotApplicableError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    assert (
-        "The objective function must be either `constant`, `linear` or `quadratic`."
-        in str(e.value)
-    )
+    mismatches = e.value.report.input_membership.clause_reports[0].mismatches
+    assert len(mismatches) == 1
+    mismatch = mismatches[0]
+    assert isinstance(mismatch, InstanceClassMismatch.ObjectiveDegreeExceedsBound)
+    assert mismatch.actual_degree == 3
+    assert mismatch.bound == DegreeBound.at_most(2)
 
 
 def test_error_nonlinear_constraint():
@@ -42,11 +51,16 @@ def test_error_nonlinear_constraint():
         },
         sense=Instance.MINIMIZE,
     )
-    with pytest.raises(OMMXGurobipyAdapterError) as e:
+    with pytest.raises(AdapterNotApplicableError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    assert "The constraints must be either `constant`, `linear` or `quadratic`." in str(
-        e.value
+    mismatches = e.value.report.input_membership.clause_reports[0].mismatches
+    assert len(mismatches) == 1
+    mismatch = mismatches[0]
+    assert isinstance(
+        mismatch, InstanceClassMismatch.RegularConstraintDegreeExceedsBound
     )
+    assert mismatch.actual_degrees == {0: 3}
+    assert mismatch.bound == DegreeBound.at_most(2)
 
 
 def test_error_not_optimized_model():
