@@ -2,7 +2,7 @@ import pytest
 
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
-from ommx.v1 import (
+from ommx import (
     Instance,
     Constraint,
     DecisionVariable,

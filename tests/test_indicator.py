@@ -2,7 +2,7 @@
 
 import pytest
 
-from ommx.v1 import Instance, DecisionVariable
+from ommx import Constraint, DecisionVariable, Equality, Instance
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
 
@@ -87,3 +87,32 @@ def test_indicator_constraint_multiple():
 
     # Optimal: activate only ic1 (weaker) so x can reach 50.
     assert solution.objective == pytest.approx(50.0)
+
+
+@pytest.mark.parametrize(
+    ("equality", "constant", "expected"),
+    [
+        (Equality.EqualToZero, 0, 1.0),
+        (Equality.EqualToZero, 1, 0.0),
+        (Equality.LessThanOrEqualToZero, -1, 1.0),
+        (Equality.LessThanOrEqualToZero, 1, 0.0),
+    ],
+)
+def test_constant_indicator_constraint(equality, constant, expected):
+    """A constant body is evaluated by OMMX and skipped or forced off."""
+    indicator = DecisionVariable.binary(0)
+    constraint = Constraint(
+        function=constant,
+        equality=equality,
+    ).with_indicator(indicator)
+    instance = Instance.from_components(
+        decision_variables=[indicator],
+        objective=indicator,
+        constraints={},
+        indicator_constraints={0: constraint},
+        sense=Instance.MAXIMIZE,
+    )
+
+    solution = OMMXGurobipyAdapter.solve(instance)
+
+    assert solution.objective == pytest.approx(expected)

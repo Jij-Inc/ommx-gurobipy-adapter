@@ -20,7 +20,7 @@ This package provides an adapter for [Gurobi](https://www.gurobi.com/) from [OMM
 - Python >= 3.10
 - Gurobi Optimizer and valid license
 - gurobipy >= 12.0.1
-- ommx >= 3.0.0a2
+- ommx >= 3.0.0b3
 
 ## Installation
 
@@ -36,7 +36,7 @@ Here's a simple example of how to use the adapter:
 
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
-from ommx.v1 import Instance, DecisionVariable
+from ommx import Instance, DecisionVariable
 
 # Create decision variables
 x1 = DecisionVariable.integer(1, lower=0, upper=5)
@@ -61,6 +61,24 @@ print(f"x1 = {solution.state.entries[1]}")
 print(f"x2 = {solution.state.entries[2]}")
 ```
 
+### Preparing an Instance
+
+Direct adapter calls are strict and do not mutate an instance to make it
+applicable. OMMX 3.0.0b3 adds an explicit preparation workflow: start from the
+adapter's recommendation, edit it if needed, and apply it to the same instance
+before solving.
+
+```python markdown-code-runner
+input_class = OMMXGurobipyAdapter.INPUT_CLASS
+assert input_class is not None
+policy = OMMXGurobipyAdapter.recommended_preparation_policy()
+
+instance.prepare(input_class, policy)
+solution = OMMXGurobipyAdapter.solve(instance)
+```
+
+Gurobi accepts Indicator and SOS1 constraints directly. The recommended policy
+therefore lowers only OneHot constraints to regular linear equalities.
 
 ### Controlling Gurobi Parameters
 
@@ -90,6 +108,8 @@ solution = adapter.decode(model)
 
 The adapter provides specific error types for different situations:
 
+- `AdapterNotApplicableError`: Raised when the instance is outside the strict
+  Gurobi input class
 - `OMMXGurobipyAdapterError`: Base error class for adapter-specific errors
 - `InfeasibleDetected`: Raised when the problem is infeasible
 - `UnboundedDetected`: Raised when the problem is unbounded
@@ -98,10 +118,16 @@ Example of error handling:
 
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapterError
-from ommx.adapter import InfeasibleDetected, UnboundedDetected
+from ommx.adapter import (
+    AdapterNotApplicableError,
+    InfeasibleDetected,
+    UnboundedDetected,
+)
 
 try:
     solution = OMMXGurobipyAdapter.solve(instance)
+except AdapterNotApplicableError:
+    print("Prepare the instance or inspect the applicability report")
 except InfeasibleDetected:
     print("Problem is infeasible")
 except UnboundedDetected:
