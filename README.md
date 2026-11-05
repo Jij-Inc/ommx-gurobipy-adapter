@@ -20,7 +20,7 @@ This package provides an adapter for [Gurobi](https://www.gurobi.com/) from [OMM
 - Python >= 3.10
 - Gurobi Optimizer and valid license
 - gurobipy >= 12.0.1
-- ommx >= 3.0.0b3
+- ommx >= 3.0.0b9
 
 ## Installation
 
@@ -63,18 +63,18 @@ print(f"x2 = {solution.state.entries[2]}")
 
 ### Preparing an Instance
 
-Direct adapter calls are strict and do not mutate an instance to make it
-applicable. OMMX 3.0.0b3 adds an explicit preparation workflow: start from the
-adapter's recommendation, edit it if needed, and apply it to the same instance
-before solving.
+`solve(instance)` prepares an isolated copy with the adapter's recommended
+policy and leaves the original instance unchanged. The constructor and
+`solve_without_preparation(instance)` require an already applicable input.
+To control preparation explicitly, edit the recommended policy and apply it
+to the instance before using the strict solve API:
 
 ```python markdown-code-runner
 input_class = OMMXGurobipyAdapter.INPUT_CLASS
-assert input_class is not None
 policy = OMMXGurobipyAdapter.recommended_preparation_policy()
 
 instance.prepare(input_class, policy)
-solution = OMMXGurobipyAdapter.solve(instance)
+solution = OMMXGurobipyAdapter.solve_without_preparation(instance)
 ```
 
 Gurobi accepts Indicator and SOS1 constraints directly. The recommended policy
@@ -109,7 +109,9 @@ solution = adapter.decode(model)
 The adapter provides specific error types for different situations:
 
 - `AdapterNotApplicableError`: Raised when the instance is outside the strict
-  Gurobi input class
+  Gurobi input class in the constructor or `solve_without_preparation`
+- `PreparationTargetNotReachedError`: Raised when `solve` cannot prepare its
+  copy into the Gurobi input class with the recommended policy
 - `OMMXGurobipyAdapterError`: Base error class for adapter-specific errors
 - `InfeasibleDetected`: Raised when the problem is infeasible
 - `UnboundedDetected`: Raised when the problem is unbounded
@@ -118,6 +120,7 @@ Example of error handling:
 
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapterError
+from ommx import PreparationTargetNotReachedError
 from ommx.adapter import (
     AdapterNotApplicableError,
     InfeasibleDetected,
@@ -128,6 +131,8 @@ try:
     solution = OMMXGurobipyAdapter.solve(instance)
 except AdapterNotApplicableError:
     print("Prepare the instance or inspect the applicability report")
+except PreparationTargetNotReachedError:
+    print("Inspect the preparation report or choose a different preparation policy")
 except InfeasibleDetected:
     print("Problem is infeasible")
 except UnboundedDetected:

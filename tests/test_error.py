@@ -8,8 +8,10 @@ from ommx_gurobipy_adapter import (
 
 from ommx import (
     Constraint,
+    ConstraintID,
+    IndicatorConstraintID,
     DecisionVariable,
-    DegreeBound,
+    PolynomialRequirement,
     Function,
     Instance,
     InstanceClassMismatch,
@@ -30,12 +32,26 @@ def test_error_polynomial_objective():
     )
     with pytest.raises(AdapterNotApplicableError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    mismatches = e.value.report.input_membership.clause_reports[0].mismatches
+    mismatches = e.value.report.clause_reports[0].mismatches
     assert len(mismatches) == 1
     mismatch = mismatches[0]
     assert isinstance(mismatch, InstanceClassMismatch.ObjectiveDegreeExceedsBound)
     assert mismatch.actual_degree == 3
-    assert mismatch.bound == DegreeBound.at_most(2)
+    assert mismatch.bound == PolynomialRequirement.at_most(2)
+
+
+def test_error_nonpolynomial_objective():
+    x = DecisionVariable.continuous(0, lower=1, upper=2)
+    instance = Instance.from_components(
+        decision_variables=[x],
+        objective=1 / Function(x),
+        constraints={},
+        sense=Instance.MINIMIZE,
+    )
+    with pytest.raises(AdapterNotApplicableError) as e:
+        OMMXGurobipyAdapter.solve_without_preparation(instance)
+    [mismatch] = e.value.report.clause_reports[0].mismatches
+    assert isinstance(mismatch, InstanceClassMismatch.ObjectiveFunctionNotPolynomial)
 
 
 def test_error_nonlinear_constraint():
@@ -55,14 +71,14 @@ def test_error_nonlinear_constraint():
     )
     with pytest.raises(AdapterNotApplicableError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    mismatches = e.value.report.input_membership.clause_reports[0].mismatches
+    mismatches = e.value.report.clause_reports[0].mismatches
     assert len(mismatches) == 1
     mismatch = mismatches[0]
     assert isinstance(
         mismatch, InstanceClassMismatch.RegularConstraintDegreeExceedsBound
     )
-    assert mismatch.actual_degrees == {0: 3}
-    assert mismatch.bound == DegreeBound.at_most(2)
+    assert mismatch.actual_degrees == {ConstraintID(0): 3}
+    assert mismatch.bound == PolynomialRequirement.at_most(2)
 
 
 def test_error_nonlinear_indicator_constraint():
@@ -78,18 +94,19 @@ def test_error_nonlinear_indicator_constraint():
 
     with pytest.raises(AdapterNotApplicableError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    mismatches = e.value.report.input_membership.clause_reports[0].mismatches
+    mismatches = e.value.report.clause_reports[0].mismatches
     assert len(mismatches) == 1
     mismatch = mismatches[0]
     assert isinstance(mismatch, InstanceClassMismatch.IndicatorBodyDegreeExceedsBound)
-    assert mismatch.actual_degrees == {7: 2}
-    assert mismatch.bound == DegreeBound.at_most(1)
+    assert mismatch.actual_degrees == {IndicatorConstraintID(7): 2}
+    assert mismatch.bound == PolynomialRequirement.at_most(1)
 
 
 @pytest.mark.parametrize(
     ("variable", "kind"),
     [
         (DecisionVariable.semi_integer(0, lower=1, upper=3), Kind.SemiInteger),
+        (DecisionVariable.finite_domain(0, values=[1, 3]), Kind.FiniteDomain),
         (
             DecisionVariable.semi_continuous(0, lower=1, upper=3),
             Kind.SemiContinuous,
@@ -106,7 +123,7 @@ def test_error_unsupported_variable_kind(variable, kind):
 
     with pytest.raises(AdapterNotApplicableError) as e:
         OMMXGurobipyAdapter(ommx_instance)
-    mismatches = e.value.report.input_membership.clause_reports[0].mismatches
+    mismatches = e.value.report.clause_reports[0].mismatches
     assert len(mismatches) == 1
     mismatch = mismatches[0]
     assert isinstance(mismatch, InstanceClassMismatch.VariableKindNotAllowed)

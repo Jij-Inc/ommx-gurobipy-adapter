@@ -4,14 +4,17 @@ import pytest
 
 from ommx import (
     DecisionVariable,
-    DegreeBound,
+    IndicatorConstraintID,
+    OneHotConstraintID,
+    Sos1ConstraintID,
+    PolynomialRequirement,
     Equality,
     Instance,
     Kind,
     OneHotConstraint,
     Sense,
     Sos1Constraint,
-    SpecialConstraintKind,
+    ConstraintKind,
 )
 from ommx.adapter import AdapterNotApplicableError
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
@@ -28,14 +31,14 @@ def test_declares_quadratic_mip_input_class() -> None:
         Kind.Integer,
         Kind.Continuous,
     }
-    assert clause.objective_degree_bound == DegreeBound.at_most(2)
-    assert clause.regular_constraint_degree_bounds == {
-        Equality.EqualToZero: DegreeBound.at_most(2),
-        Equality.LessThanOrEqualToZero: DegreeBound.at_most(2),
+    assert clause.objective_polynomial_requirement == PolynomialRequirement.at_most(2)
+    assert clause.regular_constraint_polynomial_requirements == {
+        Equality.EqualToZero: PolynomialRequirement.at_most(2),
+        Equality.LessThanOrEqualToZero: PolynomialRequirement.at_most(2),
     }
-    assert clause.indicator_constraint_degree_bounds == {
-        Equality.EqualToZero: DegreeBound.at_most(1),
-        Equality.LessThanOrEqualToZero: DegreeBound.at_most(1),
+    assert clause.indicator_body_polynomial_requirements == {
+        Equality.EqualToZero: PolynomialRequirement.at_most(1),
+        Equality.LessThanOrEqualToZero: PolynomialRequirement.at_most(1),
     }
     assert not clause.allows_one_hot
     assert clause.allows_sos1
@@ -70,9 +73,14 @@ def test_recommended_preparation_lowers_only_one_hot() -> None:
     input_class = OMMXGurobipyAdapter.INPUT_CLASS
     assert input_class is not None
 
-    assert not OMMXGurobipyAdapter.check_applicability(instance).is_applicable
+    assert not OMMXGurobipyAdapter.check_applicability(instance).is_member
     with pytest.raises(AdapterNotApplicableError):
         OMMXGurobipyAdapter(instance)
+    with pytest.raises(AdapterNotApplicableError):
+        OMMXGurobipyAdapter.solve_without_preparation(instance)
+    solution = OMMXGurobipyAdapter.solve(instance)
+    assert solution.feasible
+    assert solution.objective == pytest.approx(2)
     assert instance.to_v2_bytes() == before
 
     prepared = copy.copy(instance)
@@ -81,16 +89,41 @@ def test_recommended_preparation_lowers_only_one_hot() -> None:
         OMMXGurobipyAdapter.recommended_preparation_policy(),
     )
 
-    assert set(instance.one_hot_constraints) == {10}
-    assert prepared.one_hot_constraints == {}
-    assert set(prepared.indicator_constraints) == {30}
-    assert set(prepared.sos1_constraints) == {20}
+    assert set(instance.constraints.of_kind(ConstraintKind.OneHot)) == {
+        OneHotConstraintID(10)
+    }
+    assert not prepared.constraints.of_kind(ConstraintKind.OneHot)
+    assert set(prepared.constraints.of_kind(ConstraintKind.Indicator)) == {
+        IndicatorConstraintID(30)
+    }
+    assert set(prepared.constraints.of_kind(ConstraintKind.Sos1)) == {
+        Sos1ConstraintID(20)
+    }
     assert prepared.active_special_constraint_kinds == {
-        SpecialConstraintKind.Indicator,
-        SpecialConstraintKind.Sos1,
+        ConstraintKind.Indicator,
+        ConstraintKind.Sos1,
     }
     assert input_class.contains(prepared)
-    assert OMMXGurobipyAdapter.check_applicability(prepared).is_applicable
+    assert OMMXGurobipyAdapter.check_applicability(prepared).is_member
 
     adapter = OMMXGurobipyAdapter(prepared)
     assert adapter.instance is prepared
+
+
+def test_penalty_preparation_does_not_claim_original_optimality() -> None:
+    from ommx import Optimality, InstanceClass, PreparationPolicy
+
+    x = DecisionVariable.binary(0)
+    instance = Instance.from_components(
+        decision_variables=[x],
+        objective=x,
+        constraints={7: x == 1},
+        sense=Sense.Maximize,
+    )
+    instance.prepare(
+        InstanceClass.qubo(), PreparationPolicy.for_qubo(uniform_penalty_weight=2)
+    )
+    solution = OMMXGurobipyAdapter.solve_without_preparation(instance)
+    assert solution.feasible
+    assert solution.objective == pytest.approx(1)
+    assert solution.optimality == Optimality.Unspecified

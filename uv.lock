@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -39,7 +39,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -103,17 +103,17 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "colorama", marker = "python_full_version < '3.11' and sys_platform == 'win32'" },
-    { name = "decorator", marker = "python_full_version < '3.11'" },
-    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "jedi", marker = "python_full_version < '3.11'" },
-    { name = "matplotlib-inline", marker = "python_full_version < '3.11'" },
-    { name = "pexpect", marker = "python_full_version < '3.11' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit", marker = "python_full_version < '3.11'" },
-    { name = "pygments", marker = "python_full_version < '3.11'" },
-    { name = "stack-data", marker = "python_full_version < '3.11'" },
-    { name = "traitlets", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "decorator" },
+    { name = "exceptiongroup" },
+    { name = "jedi" },
+    { name = "matplotlib-inline" },
+    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "prompt-toolkit" },
+    { name = "pygments" },
+    { name = "stack-data" },
+    { name = "traitlets" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/40/18/f8598d287006885e7136451fdea0755af4ebcbfe342836f24deefaed1164/ipython-8.39.0.tar.gz", hash = "sha256:4110ae96012c379b8b6db898a07e186c40a2a1ef5d57a7fa83166047d9da7624", size = 5513971, upload-time = "2026-03-27T10:02:13.94Z" }
 wheels = [
@@ -129,17 +129,17 @@ resolution-markers = [
     "python_full_version == '3.11.*'",
 ]
 dependencies = [
-    { name = "colorama", marker = "python_full_version >= '3.11' and sys_platform == 'win32'" },
-    { name = "ipython-pygments-lexers", marker = "python_full_version >= '3.11'" },
-    { name = "jedi", marker = "python_full_version >= '3.11'" },
-    { name = "matplotlib-inline", marker = "python_full_version >= '3.11'" },
-    { name = "pexpect", marker = "python_full_version >= '3.11' and sys_platform != 'emscripten' and sys_platform != 'win32'" },
-    { name = "prompt-toolkit", marker = "python_full_version >= '3.11'" },
-    { name = "psutil", marker = "python_full_version >= '3.11' and sys_platform != 'cygwin' and sys_platform != 'emscripten'" },
-    { name = "pygments", marker = "python_full_version >= '3.11'" },
-    { name = "stack-data", marker = "python_full_version >= '3.11'" },
-    { name = "traitlets", marker = "python_full_version >= '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version == '3.11.*'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "ipython-pygments-lexers" },
+    { name = "jedi" },
+    { name = "matplotlib-inline" },
+    { name = "pexpect", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "prompt-toolkit" },
+    { name = "psutil", marker = "sys_platform != 'cygwin' and sys_platform != 'emscripten'" },
+    { name = "pygments" },
+    { name = "stack-data" },
+    { name = "traitlets" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/06/96/b150fe7e25a5a29ae9ac1374e71488639605d39a1ea4abb74c9ce33af235/ipython-9.16.1.tar.gz", hash = "sha256:5a3d1f9a47ff216d6cf9cf863124f6a2c1a198d1354c546a4d24a370a283b64c", size = 4515302, upload-time = "2026-08-03T08:36:15.571Z" }
 wheels = [
@@ -151,7 +151,7 @@ name = "ipython-pygments-lexers"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pygments", marker = "python_full_version >= '3.11'" },
+    { name = "pygments" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ef/4c/5dd1d8af08107f88c7f741ead7a40854b8ac24ddf9ae850afbcf698aa552/ipython_pygments_lexers-1.1.1.tar.gz", hash = "sha256:09c0138009e56b6854f9535736f4171d855c8c08a563a0dcd8022f78355c7e81", size = 8393, upload-time = "2025-01-17T11:24:34.505Z" }
 wheels = [
@@ -423,7 +423,7 @@ wheels = [
 
 [[package]]
 name = "ommx"
-version = "3.0.0b3"
+version = "3.0.0b9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ipython", version = "8.39.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -440,13 +440,13 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/a5/eb9a1de5133e94bb78e2cc1764191e7ab19afa245a69be6435607f50f0da/ommx-3.0.0b3-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:9d9a9c086a98360e1f97a5fc6088f4aa150cbfdcead7da5a971750d62a2ac903", size = 8190482, upload-time = "2026-08-12T10:41:56.432Z" },
-    { url = "https://files.pythonhosted.org/packages/8e/a5/f9857df00f994f5394c4ac2d7b21f8e03f61ee91a2990b1ac8b7b457b017/ommx-3.0.0b3-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:83e77427a88a10f85c6995da671611730de55928379162a801ca22da9cbf627d", size = 8303136, upload-time = "2026-08-12T10:41:58.448Z" },
-    { url = "https://files.pythonhosted.org/packages/ac/5f/75106f1ac91fcdb86b94d1a46c4f85d2364d06d7aa1bf47524c74c991451/ommx-3.0.0b3-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:86764376a8230c9a1d2a6606440fcc06e25b6433fc73f40030da3d1901253c8e", size = 9256494, upload-time = "2026-08-12T10:42:00.989Z" },
-    { url = "https://files.pythonhosted.org/packages/09/d7/afd6eb94b721bc77f89c1ff4c5e8f172f64d1c48cd4ede94d94bce89a97a/ommx-3.0.0b3-cp310-abi3-win_amd64.whl", hash = "sha256:0b6f0fdb131be16e747c33ddd89615d63ff1f6f293e1109a6b6b673960842cdc", size = 8660824, upload-time = "2026-08-12T10:42:03.2Z" },
-    { url = "https://files.pythonhosted.org/packages/6b/e4/8b09f6682bf0a65143b7a583f1e0c28dbbf4ba1da94acfd79bd3ba517da4/ommx-3.0.0b3-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:2d84dbd4e2c99ec6f57d2fbf01564b7af159a11b304d38a0e1c136c9918d3cc8", size = 8202901, upload-time = "2026-08-12T10:42:05.48Z" },
-    { url = "https://files.pythonhosted.org/packages/77/49/89c89d511a761fdf696d93df4a3565e4d5a8293f02307b21df3787c17707/ommx-3.0.0b3-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:ad7d9e66311f3c270febaa16c023bd212091b3fe228932a01e4e971cf1caf010", size = 8293837, upload-time = "2026-08-12T10:42:07.283Z" },
-    { url = "https://files.pythonhosted.org/packages/19/2e/285b4817d5e2771e3a21137879fb8e8f82cabc4e81f5b6b789df5be3c8dc/ommx-3.0.0b3-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:deac5d5c6be6c35c78ad55cb9875046812cbfeb9e35ca7f03ad199ff28c21334", size = 9258040, upload-time = "2026-08-12T10:42:09.079Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/73/b7e3797c4560adcc22ea06880167fa7c7112cee134cfe2bc2cb565b9fcb0/ommx-3.0.0b9-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:24962596fa8672594a30e7211cdf6687472be0759aea94db42a0bd3ddfdb443a", size = 9213943, upload-time = "2026-11-04T03:53:12.265Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/e7/676856342e77b0b215b0ee7754002c33def62b0da0fe3b720244c6abe97e/ommx-3.0.0b9-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:a46c90ad4c7134b0ad16b921e676176949f82f16c8006405627f3365cdab959f", size = 9321146, upload-time = "2026-11-04T03:53:15.369Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/2d/330cca5e54157ab006fdfe37237e49de202a63631c7042649c1378452940/ommx-3.0.0b9-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:fe6d7912f5cae87f02ee1a85cbcea024835726b69a5233db9b81724bb3dccd7d", size = 10371700, upload-time = "2026-11-04T03:53:17.478Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/67/f72907f8a3e39587b8ae2a643f8ec92f5cdb99dd224ec60565a3cbf01704/ommx-3.0.0b9-cp310-abi3-win_amd64.whl", hash = "sha256:0fab877f6913d6beec91704c9701ed3578ceed0d615d5a2607195561847fd81c", size = 9929583, upload-time = "2026-11-04T03:53:19.796Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/ee/adb94d7a28a1ed9ea4c5d440d937fed6e20b11a4b06fabc2b1fe8a9aae0d/ommx-3.0.0b9-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:c3b8c98ba0d50c22769c1a5c0918155888010edd45ba40fc3c72710f2d5b3d78", size = 9201614, upload-time = "2026-11-04T03:53:22.179Z" },
+    { url = "https://files.pythonhosted.org/packages/81/5a/66686bfbba7689e05e0677cf27da42bf5cb42a98ec4c1420e8f90f92a1bf/ommx-3.0.0b9-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:b398baabff64c25466b304a18fdfaad79ccc0749a9657a1637d1b260f6dffbac", size = 9336092, upload-time = "2026-11-04T03:53:24.717Z" },
+    { url = "https://files.pythonhosted.org/packages/da/3c/f8ebe055717360ab6cd33fd192e37ff191c38e8473deb92e8264d075c824/ommx-3.0.0b9-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:b624809f98e36e34ab555cd45135f7637de24c53209533ecb19a4b5f05f428c6", size = 10377695, upload-time = "2026-11-04T03:53:27.16Z" },
 ]
 
 [[package]]
@@ -469,7 +469,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "gurobipy", specifier = ">=12.0.1" },
-    { name = "ommx", specifier = ">=3.0.0b3,<4.0.0" },
+    { name = "ommx", specifier = ">=3.0.0b9,<4.0.0" },
 ]
 
 [package.metadata.requires-dev]

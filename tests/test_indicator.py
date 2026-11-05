@@ -17,7 +17,7 @@ def test_indicator_constraint_le():
         decision_variables=[b, x],
         objective=x,
         constraints={},
-        indicator_constraints={0: ic},
+        indicator_constraints={1: ic},
         sense=Instance.MAXIMIZE,
     )
 
@@ -37,7 +37,7 @@ def test_indicator_constraint_forced_on():
         decision_variables=[b, x],
         objective=x,
         constraints={0: b >= 1},
-        indicator_constraints={0: ic},
+        indicator_constraints={1: ic},
         sense=Instance.MAXIMIZE,
     )
 
@@ -57,7 +57,7 @@ def test_indicator_constraint_eq():
         decision_variables=[b, x],
         objective=x,
         constraints={0: b >= 1},
-        indicator_constraints={0: ic},
+        indicator_constraints={1: ic},
         sense=Instance.MAXIMIZE,
     )
 
