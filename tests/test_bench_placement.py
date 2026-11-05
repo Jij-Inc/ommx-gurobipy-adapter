@@ -1,7 +1,7 @@
 """Benchmark eight Plant Placement Problem formulations through Gurobi.
 
 Ported from ``ommx-pyscipopt-adapter/tests/test_bench_placement.py``. Each
-``placement_inputs`` parameterisation is converted to ``ommx.v1.Instance``,
+``placement_inputs`` parameterisation is converted to ``ommx.Instance``,
 then to ``gurobipy.Model``, in session-scoped fixtures — the OMMX construction
 and the OMMX → Gurobi translation are *not* in the measurement. Each benchmark
 calls ``model.reset()`` to discard any solution/basis kept from the previous
@@ -35,7 +35,7 @@ from ommx.testing.placement import (
     build_sos1_on_delta,
     build_sos1_on_delta_with_card,
 )
-from ommx.v1 import Instance
+from ommx import Instance
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 
 _SIZES = [(6, 10), (12, 20), (24, 40), (48, 80)]
