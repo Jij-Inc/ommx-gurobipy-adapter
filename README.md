@@ -17,10 +17,10 @@ This package provides an adapter for [Gurobi](https://www.gurobi.com/) from [OMM
 
 ## Prerequisites
 
-- Python >= 3.10
+- Python >= 3.11
 - Gurobi Optimizer and valid license
 - gurobipy >= 12.0.1
-- ommx >= 3.0.0a2
+- ommx >= 3.0.0rc1
 
 ## Installation
 
@@ -32,11 +32,14 @@ pip install ommx-gurobipy-adapter
 
 ## Usage
 
+`OMMXGurobipyAdapter` is marked with `typing.final`; type checkers reject
+subclasses. Implement custom adapters using `ommx.adapter.SolverAdapter`.
+
 Here's a simple example of how to use the adapter:
 
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
-from ommx.v1 import Instance, DecisionVariable
+from ommx import Instance, DecisionVariable
 
 # Create decision variables
 x1 = DecisionVariable.integer(1, lower=0, upper=5)
@@ -46,7 +49,7 @@ x2 = DecisionVariable.continuous(2, lower=0, upper=5)
 instance = Instance.from_components(
     decision_variables=[x1, x2],
     objective=x1 + 2*x2,
-    constraints={
+    active_constraints={
         0: x1 + x2 <= 5,  # Linear constraint
     },
     sense=Instance.MAXIMIZE,
@@ -61,10 +64,58 @@ print(f"x1 = {solution.state.entries[1]}")
 print(f"x2 = {solution.state.entries[2]}")
 ```
 
+### Automatic Preparation: OneHot Constraints
+
+Gurobi does not accept OMMX OneHot constraints directly. For example, when
+choosing exactly one of two binary variables, `solve()` converts the OneHot
+constraint to the linear equality `a + b = 1` on an internal copy:
+
+```python markdown-code-runner
+from ommx import ConstraintKind, OneHotConstraint
+
+choices = Instance.maximize()
+a = choices.new_binary("a")
+b = choices.new_binary("b")
+choices.objective = 3 * a + 5 * b
+choices.add_one_hot_constraint(OneHotConstraint(variables=[a, b]))
+
+solution = OMMXGurobipyAdapter.solve(choices)
+assert solution.feasible
+assert solution.objective == 5
+
+# The original instance still contains the OneHot constraint.
+assert len(choices.active_constraints.of_kind(ConstraintKind.OneHot)) == 1
+assert not OMMXGurobipyAdapter.check_applicability(choices).is_member
+```
+
+Calling `OMMXGurobipyAdapter(choices)` or
+`OMMXGurobipyAdapter.solve_without_preparation(choices)` at this point would
+raise `AdapterNotApplicableError`: the preceding solve did not apply its
+conversion to `choices`. To use these APIs, prepare that instance explicitly:
+
+```python markdown-code-runner
+choices.prepare(
+    OMMXGurobipyAdapter.INPUT_CLASS,
+    OMMXGurobipyAdapter.recommended_preparation_policy(),
+)
+assert not choices.active_constraints.of_kind(ConstraintKind.OneHot)
+solution = OMMXGurobipyAdapter.solve_without_preparation(choices)
+assert solution.objective == 5
+```
+
+The recommended policy converts only OneHot constraints. Indicator and SOS1
+constraints are passed to Gurobi directly; Indicators support both
+`trigger_value=0` and `trigger_value=1`.
 
 ### Controlling Gurobi Parameters
 
 If you need more control over the Gurobi solver parameters, you can use the adapter in two steps:
+
+The constructor retains the supplied Instance without copying it. You are
+responsible for keeping that Instance unchanged from adapter construction
+through optimization and decoding, and for as long as you continue using
+the adapter's `solver_input`. Decoding evaluates the backend result against
+that same Instance; changes to it are not synchronized with the Gurobi model.
 
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
@@ -90,20 +141,38 @@ solution = adapter.decode(model)
 
 The adapter provides specific error types for different situations:
 
+- `AdapterNotApplicableError`: Raised when the instance is outside the strict
+  Gurobi input class in the constructor or `solve_without_preparation`
+- `PreparationTargetNotReachedError`: Raised when `solve` cannot prepare its
+  copy into the Gurobi input class with the recommended policy
 - `OMMXGurobipyAdapterError`: Base error class for adapter-specific errors
 - `InfeasibleDetected`: Raised when the problem is infeasible
+- `InfeasibleOrUnboundedDetected`: Raised when Gurobi cannot distinguish
+  infeasibility from unboundedness; decoding does not re-solve the model
 - `UnboundedDetected`: Raised when the problem is unbounded
 
 Example of error handling:
 
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapterError
-from ommx.adapter import InfeasibleDetected, UnboundedDetected
+from ommx import PreparationTargetNotReachedError
+from ommx.adapter import (
+    AdapterNotApplicableError,
+    InfeasibleDetected,
+    InfeasibleOrUnboundedDetected,
+    UnboundedDetected,
+)
 
 try:
     solution = OMMXGurobipyAdapter.solve(instance)
+except AdapterNotApplicableError:
+    print("Prepare the instance or inspect the applicability report")
+except PreparationTargetNotReachedError:
+    print("Inspect the preparation report or choose a different preparation policy")
 except InfeasibleDetected:
     print("Problem is infeasible")
+except InfeasibleOrUnboundedDetected:
+    print("Problem is infeasible or unbounded; further analysis is needed")
 except UnboundedDetected:
     print("Problem is unbounded")
 except OMMXGurobipyAdapterError as e:
