@@ -108,7 +108,7 @@ def test_recommended_preparation_lowers_only_one_hot() -> None:
     assert OMMXGurobipyAdapter.check_applicability(prepared).is_member
 
     adapter = OMMXGurobipyAdapter(prepared)
-    assert adapter.instance is prepared
+    assert adapter.instance.to_v2_bytes() == prepared.to_v2_bytes()
 
 
 def test_penalty_preparation_does_not_claim_original_optimality() -> None:

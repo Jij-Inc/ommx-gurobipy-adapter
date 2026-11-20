@@ -102,7 +102,7 @@ def test_indicator_constraint_multiple():
 )
 @pytest.mark.parametrize("trigger_value", [0, 1])
 def test_constant_indicator_constraint(equality, constant, expected, trigger_value):
-    """A constant body is evaluated by OMMX and skipped or forced off."""
+    """The backend enforces constant bodies for either activation value."""
     indicator = DecisionVariable.binary(0)
     constraint = Constraint(
         function=constant,

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import copy
 from typing import ClassVar
 
 import gurobipy as gp
 from gurobipy import GRB
 from ommx import (
-    Constraint,
     PolynomialRequirement,
     Equality,
     Function,
@@ -30,8 +30,6 @@ from ommx.adapter import (
 )
 
 from .exception import OMMXGurobipyAdapterError
-
-ABSOLUTE_TOLERANCE = 1e-6
 
 _GUROBI_VARIABLE_TYPES: dict[Kind, str] = {
     Kind.Binary: GRB.BINARY,
@@ -89,8 +87,11 @@ class OMMXGurobipyAdapter(SolverAdapter):
         )
 
     def __init__(self, ommx_instance: Instance):
-        self.require_applicable(ommx_instance)
-        self.instance = ommx_instance
+        """Encode an applicable input snapshot without preparing the source."""
+        # Encoding and decoding must use the same mathematical snapshot even
+        # when the caller subsequently edits the source instance.
+        self.instance = copy.copy(ommx_instance)
+        self.require_applicable(self.instance)
         self.model = gp.Model()
         self.model.setParam("OutputFlag", 0)  # Suppress output
 
@@ -181,15 +182,12 @@ class OMMXGurobipyAdapter(SolverAdapter):
         for var in self.instance.active_decision_variables:
             kind = var.kind
             variable_type = _GUROBI_VARIABLE_TYPES[kind]
-            if kind == Kind.Binary:
-                self.model.addVar(name=str(var.id), vtype=variable_type)
-            else:
-                self.model.addVar(
-                    name=str(var.id),
-                    vtype=variable_type,
-                    lb=var.bound.lower,
-                    ub=var.bound.upper,
-                )
+            self.model.addVar(
+                name=str(var.id),
+                vtype=variable_type,
+                lb=var.bound.lower,
+                ub=var.bound.upper,
+            )
 
         # Create map of OMMX variable IDs to Gurobi variables and ensure model is updated
         self.model.update()
@@ -230,32 +228,12 @@ class OMMXGurobipyAdapter(SolverAdapter):
             expr = self._make_expr(constraint.function)
             self.model.addQConstr(expr, sense, 0.0, name=str(cid))
 
-        # Handle indicator constraints (binvar = 1 => f(x) <= 0 or = 0)
+        # Encode constant bodies too, so backend feasibility settings apply.
         for ind_id, indicator in self.instance.active_constraints.of_kind(
             ConstraintKind.Indicator
         ).items():
             f = indicator.function
             sense = _GUROBI_CONSTRAINT_SENSES[indicator.equality]
-
-            if f.degree() == 0:
-                # When the indicator is active, the constant constraint must hold.
-                is_feasible = (
-                    Constraint(
-                        function=f,
-                        equality=indicator.equality,
-                    )
-                    .evaluate({}, atol=ABSOLUTE_TOLERANCE)
-                    .is_feasible(atol=ABSOLUTE_TOLERANCE)
-                )
-                if is_feasible:
-                    continue
-                # Otherwise the indicator must be forced off.
-                binvar = self.varname_map[str(indicator.indicator_variable_id)]
-                self.model.addConstr(
-                    binvar == 1 - indicator.trigger_value,
-                    name=f"ind_{ind_id}_forced_off",
-                )
-                continue
 
             binvar = self.varname_map[str(indicator.indicator_variable_id)]
             lhs = self._make_linear_expr(f)
