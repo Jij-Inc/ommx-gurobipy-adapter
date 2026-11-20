@@ -16,8 +16,8 @@ def test_indicator_constraint_le():
     instance = Instance.from_components(
         decision_variables=[b, x],
         objective=x,
-        constraints={},
-        indicator_constraints={1: ic},
+        active_constraints={},
+        active_indicator_constraints={1: ic},
         sense=Instance.MAXIMIZE,
     )
 
@@ -26,18 +26,19 @@ def test_indicator_constraint_le():
     assert solution.objective == pytest.approx(10.0)
 
 
-def test_indicator_constraint_forced_on():
+@pytest.mark.parametrize("trigger_value", [0, 1])
+def test_indicator_constraint_forced_on(trigger_value):
     """When b is forced to 1, the indicator constraint becomes active."""
     b = DecisionVariable.binary(0)
     x = DecisionVariable.continuous(1, lower=0, upper=10)
 
-    ic = (x <= 5).with_indicator(b)
+    ic = (x <= 5).with_indicator(b, trigger_value=trigger_value)
 
     instance = Instance.from_components(
         decision_variables=[b, x],
         objective=x,
-        constraints={0: b >= 1},
-        indicator_constraints={1: ic},
+        active_constraints={0: b == trigger_value},
+        active_indicator_constraints={1: ic},
         sense=Instance.MAXIMIZE,
     )
 
@@ -46,18 +47,19 @@ def test_indicator_constraint_forced_on():
     assert solution.objective == pytest.approx(5.0)
 
 
-def test_indicator_constraint_eq():
+@pytest.mark.parametrize("trigger_value", [0, 1])
+def test_indicator_constraint_eq(trigger_value):
     """b = 1 implies x == 3."""
     b = DecisionVariable.binary(0)
     x = DecisionVariable.continuous(1, lower=0, upper=10)
 
-    ic = (x == 3).with_indicator(b)
+    ic = (x == 3).with_indicator(b, trigger_value=trigger_value)
 
     instance = Instance.from_components(
         decision_variables=[b, x],
         objective=x,
-        constraints={0: b >= 1},
-        indicator_constraints={1: ic},
+        active_constraints={0: b == trigger_value},
+        active_indicator_constraints={1: ic},
         sense=Instance.MAXIMIZE,
     )
 
@@ -78,8 +80,8 @@ def test_indicator_constraint_multiple():
     instance = Instance.from_components(
         decision_variables=[b1, b2, x],
         objective=x,
-        constraints={0: b1 + b2 >= 1},
-        indicator_constraints={10: ic1, 11: ic2},
+        active_constraints={0: b1 + b2 >= 1},
+        active_indicator_constraints={10: ic1, 11: ic2},
         sense=Instance.MAXIMIZE,
     )
 
@@ -98,18 +100,19 @@ def test_indicator_constraint_multiple():
         (Equality.LessThanOrEqualToZero, 1, 0.0),
     ],
 )
-def test_constant_indicator_constraint(equality, constant, expected):
+@pytest.mark.parametrize("trigger_value", [0, 1])
+def test_constant_indicator_constraint(equality, constant, expected, trigger_value):
     """A constant body is evaluated by OMMX and skipped or forced off."""
     indicator = DecisionVariable.binary(0)
     constraint = Constraint(
         function=constant,
         equality=equality,
-    ).with_indicator(indicator)
+    ).with_indicator(indicator, trigger_value=trigger_value)
     instance = Instance.from_components(
         decision_variables=[indicator],
-        objective=indicator,
-        constraints={},
-        indicator_constraints={0: constraint},
+        objective=indicator if trigger_value else 1 - indicator,
+        active_constraints={},
+        active_indicator_constraints={0: constraint},
         sense=Instance.MAXIMIZE,
     )
 

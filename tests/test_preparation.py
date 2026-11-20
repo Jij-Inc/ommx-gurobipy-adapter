@@ -42,6 +42,7 @@ def test_declares_quadratic_mip_input_class() -> None:
     }
     assert not clause.allows_one_hot
     assert clause.allows_sos1
+    assert clause.allowed_indicator_trigger_values == {0, 1}
     assert clause.allowed_senses == {Sense.Minimize, Sense.Maximize}
 
 
@@ -61,12 +62,12 @@ def test_recommended_preparation_lowers_only_one_hot() -> None:
     instance = Instance.from_components(
         decision_variables=[indicator, *one_hot_variables, value],
         objective=value,
-        constraints={},
-        indicator_constraints={30: (value <= 1).with_indicator(indicator)},
-        one_hot_constraints={
+        active_constraints={},
+        active_indicator_constraints={30: (value <= 1).with_indicator(indicator)},
+        active_one_hot_constraints={
             10: OneHotConstraint(variables=one_hot_variables),
         },
-        sos1_constraints={20: Sos1Constraint(variables=one_hot_variables)},
+        active_sos1_constraints={20: Sos1Constraint(variables=one_hot_variables)},
         sense=Sense.Maximize,
     )
     before = instance.to_v2_bytes()
@@ -89,14 +90,14 @@ def test_recommended_preparation_lowers_only_one_hot() -> None:
         OMMXGurobipyAdapter.recommended_preparation_policy(),
     )
 
-    assert set(instance.constraints.of_kind(ConstraintKind.OneHot)) == {
+    assert set(instance.active_constraints.of_kind(ConstraintKind.OneHot)) == {
         OneHotConstraintID(10)
     }
-    assert not prepared.constraints.of_kind(ConstraintKind.OneHot)
-    assert set(prepared.constraints.of_kind(ConstraintKind.Indicator)) == {
+    assert not prepared.active_constraints.of_kind(ConstraintKind.OneHot)
+    assert set(prepared.active_constraints.of_kind(ConstraintKind.Indicator)) == {
         IndicatorConstraintID(30)
     }
-    assert set(prepared.constraints.of_kind(ConstraintKind.Sos1)) == {
+    assert set(prepared.active_constraints.of_kind(ConstraintKind.Sos1)) == {
         Sos1ConstraintID(20)
     }
     assert prepared.active_special_constraint_kinds == {
@@ -117,7 +118,7 @@ def test_penalty_preparation_does_not_claim_original_optimality() -> None:
     instance = Instance.from_components(
         decision_variables=[x],
         objective=x,
-        constraints={7: x == 1},
+        active_constraints={7: x == 1},
         sense=Sense.Maximize,
     )
     instance.prepare(

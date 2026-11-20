@@ -1,5 +1,6 @@
 import pytest
 import gurobipy as gp
+from unittest.mock import Mock
 
 from ommx_gurobipy_adapter import (
     OMMXGurobipyAdapterError,
@@ -18,7 +19,21 @@ from ommx import (
     Kind,
     Polynomial,
 )
-from ommx.adapter import AdapterNotApplicableError, InfeasibleDetected
+from ommx.adapter import (
+    AdapterNotApplicableError,
+    InfeasibleDetected,
+    InfeasibleOrUnboundedDetected,
+)
+
+
+@pytest.mark.parametrize("decode", ["decode", "decode_to_state"])
+def test_infeasible_or_unbounded_status(decode):
+    adapter = OMMXGurobipyAdapter.__new__(OMMXGurobipyAdapter)
+    model = Mock(spec=gp.Model)
+    model.Status = gp.GRB.INF_OR_UNBD
+    with pytest.raises(InfeasibleOrUnboundedDetected):
+        getattr(adapter, decode)(model)
+    model.optimize.assert_not_called()
 
 
 def test_error_polynomial_objective():
@@ -27,7 +42,7 @@ def test_error_polynomial_objective():
     ommx_instance = Instance.from_components(
         decision_variables=[DecisionVariable.continuous(1)],
         objective=Polynomial(terms={(1, 1, 1): 2.3}),
-        constraints={},
+        active_constraints={},
         sense=Instance.MINIMIZE,
     )
     with pytest.raises(AdapterNotApplicableError) as e:
@@ -45,7 +60,7 @@ def test_error_nonpolynomial_objective():
     instance = Instance.from_components(
         decision_variables=[x],
         objective=1 / Function(x),
-        constraints={},
+        active_constraints={},
         sense=Instance.MINIMIZE,
     )
     with pytest.raises(AdapterNotApplicableError) as e:
@@ -61,7 +76,7 @@ def test_error_nonlinear_constraint():
     ommx_instance = Instance.from_components(
         decision_variables=[DecisionVariable.continuous(1)],
         objective=0,
-        constraints={
+        active_constraints={
             0: Constraint(
                 function=Polynomial(terms={(1, 1, 1): 2.3}),
                 equality=Constraint.EQUAL_TO_ZERO,
@@ -87,8 +102,8 @@ def test_error_nonlinear_indicator_constraint():
     ommx_instance = Instance.from_components(
         decision_variables=[indicator, x],
         objective=x,
-        constraints={},
-        indicator_constraints={7: (x * x <= 1).with_indicator(indicator)},
+        active_constraints={},
+        active_indicator_constraints={7: (x * x <= 1).with_indicator(indicator)},
         sense=Instance.MINIMIZE,
     )
 
@@ -117,7 +132,7 @@ def test_error_unsupported_variable_kind(variable, kind):
     ommx_instance = Instance.from_components(
         decision_variables=[variable],
         objective=variable,
-        constraints={},
+        active_constraints={},
         sense=Instance.MINIMIZE,
     )
 
@@ -153,7 +168,7 @@ def test_error_not_optimized_model():
     instance = Instance.from_components(
         decision_variables=[],
         objective=0,
-        constraints={},
+        active_constraints={},
         sense=Instance.MINIMIZE,
     )
     with pytest.raises(OMMXGurobipyAdapterError) as e:
@@ -167,7 +182,7 @@ def test_error_infeasible_model():
     ommx_instance = Instance.from_components(
         decision_variables=[x],
         objective=0,
-        constraints={
+        active_constraints={
             0: Constraint(
                 function=x,
                 equality=Constraint.EQUAL_TO_ZERO,
@@ -188,7 +203,7 @@ def test_error_infeasible_constant_equality_constraint():
     ommx_instance = Instance.from_components(
         decision_variables=[],
         objective=0,
-        constraints={
+        active_constraints={
             0: Constraint(
                 function=-1,
                 equality=Constraint.EQUAL_TO_ZERO,
@@ -196,9 +211,8 @@ def test_error_infeasible_constant_equality_constraint():
         },
         sense=Instance.MINIMIZE,
     )
-    with pytest.raises(OMMXGurobipyAdapterError) as e:
-        OMMXGurobipyAdapter(ommx_instance)
-    assert "Infeasible constant constraint was found" in str(e.value)
+    with pytest.raises(InfeasibleDetected):
+        OMMXGurobipyAdapter.solve_without_preparation(ommx_instance)
 
 
 def test_error_infeasible_constant_inequality_constraint():
@@ -206,7 +220,7 @@ def test_error_infeasible_constant_inequality_constraint():
     ommx_instance = Instance.from_components(
         decision_variables=[],
         objective=0,
-        constraints={
+        active_constraints={
             0: Constraint(
                 function=1,
                 equality=Constraint.LESS_THAN_OR_EQUAL_TO_ZERO,
@@ -214,6 +228,5 @@ def test_error_infeasible_constant_inequality_constraint():
         },
         sense=Instance.MINIMIZE,
     )
-    with pytest.raises(OMMXGurobipyAdapterError) as e:
-        OMMXGurobipyAdapter(ommx_instance)
-    assert "Infeasible constant constraint was found" in str(e.value)
+    with pytest.raises(InfeasibleDetected):
+        OMMXGurobipyAdapter.solve_without_preparation(ommx_instance)

@@ -58,7 +58,7 @@ def test_integration_milp():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 - x2,
-        constraints={
+        active_constraints={
             0: 3 * x1 - x2 <= 6,
             1: -x1 + 3 * x2 <= 6,
         },
@@ -85,7 +85,7 @@ def test_integration_binary():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 + x2,
-        constraints={},
+        active_constraints={},
         sense=Instance.MINIMIZE,
     )
 
@@ -109,7 +109,7 @@ def test_integration_maximize():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 + x2,
-        constraints={},
+        active_constraints={},
         sense=Instance.MAXIMIZE,
     )
 
@@ -138,7 +138,7 @@ def test_integration_constant_objective():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=0,
-        constraints={0: x1 + x2 - 5 == 0},
+        active_constraints={0: x1 + x2 - 5 == 0},
         sense=Instance.MINIMIZE,
     )
 
@@ -171,7 +171,7 @@ def test_integration_quadratic_objective():
             columns=[1, 2],
             values=[1, 1],
         ),
-        constraints={0: x1 + x2 == 4},
+        active_constraints={0: x1 + x2 == 4},
     )
 
     adapter = OMMXGurobipyAdapter(instance)
@@ -200,7 +200,7 @@ def test_integration_quadratic_constraint():
         sense=Instance.MINIMIZE,
         decision_variables=[x1, x2],
         objective=-x1 - x2,
-        constraints={
+        active_constraints={
             0: Constraint(
                 function=Quadratic(
                     columns=[1, 2],
@@ -240,7 +240,7 @@ def test_integration_feasible_constant_constraint():
     instance = Instance.from_components(
         decision_variables=[x1, x2],
         objective=-x1 - x2,
-        constraints={
+        active_constraints={
             0: 3 * x1 - x2 <= 6,
             1: -x1 + 3 * x2 <= 6,
             2: Constraint(
@@ -275,8 +275,8 @@ def test_integration_with_sos1_constraint():
     instance = Instance.from_components(
         decision_variables=[x1, x2, x3],
         objective=x1 + 2 * x2 + 3 * x3,
-        constraints={},
-        sos1_constraints={0: Sos1Constraint(variables=[1, 2, 3])},
+        active_constraints={},
+        active_sos1_constraints={0: Sos1Constraint(variables=[1, 2, 3])},
         sense=Instance.MAXIMIZE,
     )
 

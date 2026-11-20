@@ -24,6 +24,7 @@ from ommx import (
 from ommx.adapter import (
     DiagnosticsSink,
     InfeasibleDetected,
+    InfeasibleOrUnboundedDetected,
     SolverAdapter,
     UnboundedDetected,
 )
@@ -67,6 +68,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     _LINEAR_INDICATOR_CONSTRAINT_POLYNOMIAL_REQUIREMENTS
                 ),
                 allows_sos1=True,
+                allowed_indicator_trigger_values={0, 1},
                 allowed_senses=set(_GUROBI_MODEL_SENSES),
             )
         ]
@@ -153,6 +155,9 @@ class OMMXGurobipyAdapter(SolverAdapter):
         if data.Status == GRB.INFEASIBLE:
             raise InfeasibleDetected("Model was infeasible")
 
+        if data.Status == GRB.INF_OR_UNBD:
+            raise InfeasibleOrUnboundedDetected("Model was infeasible or unbounded")
+
         if data.Status == GRB.UNBOUNDED:
             raise UnboundedDetected("Model was unbounded")
 
@@ -163,7 +168,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
                 )
 
             entries = {}
-            for var in self.instance.used_decision_variables:
+            for var in self.instance.active_decision_variables:
                 variable = data.getVarByName(str(var.id))
                 if variable:
                     entries[var.id] = variable.X
@@ -173,7 +178,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
 
     def _set_decision_variables(self):
         """Set up decision variables in the Gurobi model."""
-        for var in self.instance.used_decision_variables:
+        for var in self.instance.active_decision_variables:
             kind = var.kind
             variable_type = _GUROBI_VARIABLE_TYPES[kind]
             if kind == Kind.Binary:
@@ -192,7 +197,7 @@ class OMMXGurobipyAdapter(SolverAdapter):
             str(id): var
             for var, id in zip(
                 self.model.getVars(),
-                (var.id for var in self.instance.used_decision_variables),
+                (var.id for var in self.instance.active_decision_variables),
             )
         }
 
@@ -209,32 +214,24 @@ class OMMXGurobipyAdapter(SolverAdapter):
     def _set_constraints(self):
         """Set up constraints in the Gurobi model."""
         # Handle SOS1 constraints (first-class in ommx v3)
-        for sos1 in self.instance.constraints.of_kind(ConstraintKind.Sos1).values():
+        for sos1 in self.instance.active_constraints.of_kind(
+            ConstraintKind.Sos1
+        ).values():
             vars = [self.varname_map[str(v)] for v in sos1.variables]
             self.model.addSOS(GRB.SOS_TYPE1, vars)
 
         # Handle regular constraints
-        for cid, constraint in self.instance.constraints.of_kind(
+        for cid, constraint in self.instance.active_constraints.of_kind(
             ConstraintKind.Regular
         ).items():
             sense = _GUROBI_CONSTRAINT_SENSES[constraint.equality]
-
-            # Only constant case.
-            if constraint.function.degree() == 0:
-                if constraint.evaluate({}, atol=ABSOLUTE_TOLERANCE).is_feasible(
-                    atol=ABSOLUTE_TOLERANCE
-                ):
-                    continue
-                raise OMMXGurobipyAdapterError(
-                    f"Infeasible constant constraint was found: id {cid}"
-                )
 
             # Create Gurobi expression for the constraint
             expr = self._make_expr(constraint.function)
             self.model.addQConstr(expr, sense, 0.0, name=str(cid))
 
         # Handle indicator constraints (binvar = 1 => f(x) <= 0 or = 0)
-        for ind_id, indicator in self.instance.constraints.of_kind(
+        for ind_id, indicator in self.instance.active_constraints.of_kind(
             ConstraintKind.Indicator
         ).items():
             f = indicator.function
@@ -254,14 +251,22 @@ class OMMXGurobipyAdapter(SolverAdapter):
                     continue
                 # Otherwise the indicator must be forced off.
                 binvar = self.varname_map[str(indicator.indicator_variable_id)]
-                self.model.addConstr(binvar == 0, name=f"ind_{ind_id}_forced_off")
+                self.model.addConstr(
+                    binvar == 1 - indicator.trigger_value,
+                    name=f"ind_{ind_id}_forced_off",
+                )
                 continue
 
             binvar = self.varname_map[str(indicator.indicator_variable_id)]
             lhs = self._make_linear_expr(f)
 
             self.model.addGenConstrIndicator(
-                binvar, True, lhs, sense, 0.0, name=f"ind_{ind_id}"
+                binvar,
+                bool(indicator.trigger_value),
+                lhs,
+                sense,
+                0.0,
+                name=f"ind_{ind_id}",
             )
 
     def _make_expr(self, function: Function) -> gp.QuadExpr:

@@ -17,10 +17,10 @@ This package provides an adapter for [Gurobi](https://www.gurobi.com/) from [OMM
 
 ## Prerequisites
 
-- Python >= 3.10
+- Python >= 3.11
 - Gurobi Optimizer and valid license
 - gurobipy >= 12.0.1
-- ommx >= 3.0.0b9
+- ommx >= 3.0.0rc1
 
 ## Installation
 
@@ -46,7 +46,7 @@ x2 = DecisionVariable.continuous(2, lower=0, upper=5)
 instance = Instance.from_components(
     decision_variables=[x1, x2],
     objective=x1 + 2*x2,
-    constraints={
+    active_constraints={
         0: x1 + x2 <= 5,  # Linear constraint
     },
     sense=Instance.MAXIMIZE,
@@ -79,6 +79,7 @@ solution = OMMXGurobipyAdapter.solve_without_preparation(instance)
 
 Gurobi accepts Indicator and SOS1 constraints directly. The recommended policy
 therefore lowers only OneHot constraints to regular linear equalities.
+Indicator constraints support both `trigger_value=0` and `trigger_value=1`.
 
 ### Controlling Gurobi Parameters
 
@@ -114,6 +115,8 @@ The adapter provides specific error types for different situations:
   copy into the Gurobi input class with the recommended policy
 - `OMMXGurobipyAdapterError`: Base error class for adapter-specific errors
 - `InfeasibleDetected`: Raised when the problem is infeasible
+- `InfeasibleOrUnboundedDetected`: Raised when Gurobi cannot distinguish
+  infeasibility from unboundedness; decoding does not re-solve the model
 - `UnboundedDetected`: Raised when the problem is unbounded
 
 Example of error handling:
@@ -124,6 +127,7 @@ from ommx import PreparationTargetNotReachedError
 from ommx.adapter import (
     AdapterNotApplicableError,
     InfeasibleDetected,
+    InfeasibleOrUnboundedDetected,
     UnboundedDetected,
 )
 
@@ -135,6 +139,8 @@ except PreparationTargetNotReachedError:
     print("Inspect the preparation report or choose a different preparation policy")
 except InfeasibleDetected:
     print("Problem is infeasible")
+except InfeasibleOrUnboundedDetected:
+    print("Problem is infeasible or unbounded; further analysis is needed")
 except UnboundedDetected:
     print("Problem is unbounded")
 except OMMXGurobipyAdapterError as e:

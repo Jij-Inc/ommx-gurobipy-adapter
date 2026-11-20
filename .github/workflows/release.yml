@@ -3,7 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - "*"
+      - "v*"
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -12,25 +13,60 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
-      - name: Build wheel
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Build distributions
         run: |
-          python -m pip install --upgrade pip build
-          python -m build --sdist --outdir ./dist .
+          uv build --sdist --wheel
+          uvx twine check dist/*
+
+      - name: Verify installed wheel
+        run: |
+          uv run --isolated --no-project --with ./dist/*.whl --with packaging python -I - <<'PY'
+          import os
+          from importlib.metadata import metadata
+          from packaging.requirements import Requirement
+          from packaging.version import Version
+          from ommx import Instance
+          from ommx_gurobipy_adapter import OMMXGurobipyAdapter
+
+          package = metadata("ommx-gurobipy-adapter")
+          requirement = next(Requirement(r) for r in package.get_all("Requires-Dist") if Requirement(r).name == "ommx")
+          assert "3.0.0rc1" in requirement.specifier
+          assert "3.0.0" in requirement.specifier
+          assert "4.0.0" not in requirement.specifier
+          if os.environ.get("GITHUB_REF_TYPE") == "tag":
+              version = Version(package["Version"])
+              assert version == Version(os.environ["GITHUB_REF_NAME"].removeprefix("v"))
+              assert not version.is_devrelease and version.local is None
+
+          model = Instance.minimize()
+          x = model.new_binary("x")
+          model.objective = -x
+          assert OMMXGurobipyAdapter.solve(model).objective == -1
+          PY
+
+      - name: Verify sdist builds a wheel
+        run: uv build dist/*.tar.gz --wheel --out-dir rebuilt
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: wheel
+          name: distributions
           path: ./dist/
           retention-days: 30
 
   publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -40,8 +76,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist
-          pattern: "*"
-          merge-multiple: true
+          name: distributions
 
       - name: Upload wheels to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
