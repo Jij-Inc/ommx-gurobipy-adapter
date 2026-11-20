@@ -28,23 +28,6 @@ def test_binary_domain_bounds_are_preserved(fixed):
     assert solution.optimality == Optimality.Optimal
 
 
-def test_decode_uses_the_encoded_instance_snapshot():
-    instance = Instance.maximize()
-    x = instance.new_binary("x")
-    instance.objective = x
-    adapter = OMMXGurobipyAdapter(instance)
-
-    # Editing the caller's model must not change what the backend result means.
-    instance.objective = -x
-    instance.add_constraint(x == 0)
-    adapter.solver_input.optimize()
-    solution = adapter.decode(adapter.solver_input)
-    assert solution.objective == 1
-    assert solution.feasible
-    assert solution.optimality == Optimality.Optimal
-    assert not instance.evaluate(solution.state).feasible
-
-
 @pytest.mark.parametrize("trigger", [0, 1])
 @pytest.mark.parametrize(
     "equality", [Equality.EqualToZero, Equality.LessThanOrEqualToZero]

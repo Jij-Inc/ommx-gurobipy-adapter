@@ -108,6 +108,12 @@ constraints are passed to Gurobi directly; Indicators support both
 
 If you need more control over the Gurobi solver parameters, you can use the adapter in two steps:
 
+The constructor retains the supplied Instance without copying it. You are
+responsible for keeping that Instance unchanged from adapter construction
+through optimization and decoding, and for as long as you continue using
+the adapter's `solver_input`. Decoding evaluates the backend result against
+that same Instance; changes to it are not synchronized with the Gurobi model.
+
 ```python markdown-code-runner
 from ommx_gurobipy_adapter import OMMXGurobipyAdapter
 

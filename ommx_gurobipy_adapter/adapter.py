@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from typing import ClassVar
 
 import gurobipy as gp
@@ -87,11 +86,13 @@ class OMMXGurobipyAdapter(SolverAdapter):
         )
 
     def __init__(self, ommx_instance: Instance):
-        """Encode an applicable input snapshot without preparing the source."""
-        # Encoding and decoding must use the same mathematical snapshot even
-        # when the caller subsequently edits the source instance.
-        self.instance = copy.copy(ommx_instance)
-        self.require_applicable(self.instance)
+        """Encode an applicable input without copying or preparing it.
+
+        The caller must keep this Instance unchanged while using the adapter,
+        including through solver_input optimization and result decoding.
+        """
+        self.require_applicable(ommx_instance)
+        self.instance = ommx_instance
         self.model = gp.Model()
         self.model.setParam("OutputFlag", 0)  # Suppress output
 
@@ -121,11 +122,15 @@ class OMMXGurobipyAdapter(SolverAdapter):
 
     @property
     def solver_input(self) -> gp.Model:
-        """The Gurobi model generated from this OMMX instance"""
+        """The generated Gurobi model, available for solver parameter settings.
+
+        The caller must not modify the source Instance while using this model
+        and decoding its results; the adapter retains it without copying.
+        """
         return self.model
 
     def decode(self, data: gp.Model) -> Solution:
-        """Convert optimized Gurobi Model to ommx.Solution."""
+        """Decode against the source Instance, which the caller must keep unchanged."""
 
         status = data.Status
 
