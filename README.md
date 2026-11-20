@@ -61,25 +61,48 @@ print(f"x1 = {solution.state.entries[1]}")
 print(f"x2 = {solution.state.entries[2]}")
 ```
 
-### Preparing an Instance
+### Automatic Preparation: OneHot Constraints
 
-`solve(instance)` prepares an isolated copy with the adapter's recommended
-policy and leaves the original instance unchanged. The constructor and
-`solve_without_preparation(instance)` require an already applicable input.
-To control preparation explicitly, edit the recommended policy and apply it
-to the instance before using the strict solve API:
+Gurobi does not accept OMMX OneHot constraints directly. For example, when
+choosing exactly one of two binary variables, `solve()` converts the OneHot
+constraint to the linear equality `a + b = 1` on an internal copy:
 
 ```python markdown-code-runner
-input_class = OMMXGurobipyAdapter.INPUT_CLASS
-policy = OMMXGurobipyAdapter.recommended_preparation_policy()
+from ommx import ConstraintKind, OneHotConstraint
 
-instance.prepare(input_class, policy)
-solution = OMMXGurobipyAdapter.solve_without_preparation(instance)
+choices = Instance.maximize()
+a = choices.new_binary("a")
+b = choices.new_binary("b")
+choices.objective = 3 * a + 5 * b
+choices.add_one_hot_constraint(OneHotConstraint(variables=[a, b]))
+
+solution = OMMXGurobipyAdapter.solve(choices)
+assert solution.feasible
+assert solution.objective == 5
+
+# The original instance still contains the OneHot constraint.
+assert len(choices.active_constraints.of_kind(ConstraintKind.OneHot)) == 1
+assert not OMMXGurobipyAdapter.check_applicability(choices).is_member
 ```
 
-Gurobi accepts Indicator and SOS1 constraints directly. The recommended policy
-therefore lowers only OneHot constraints to regular linear equalities.
-Indicator constraints support both `trigger_value=0` and `trigger_value=1`.
+Calling `OMMXGurobipyAdapter(choices)` or
+`OMMXGurobipyAdapter.solve_without_preparation(choices)` at this point would
+raise `AdapterNotApplicableError`: the preceding solve did not apply its
+conversion to `choices`. To use these APIs, prepare that instance explicitly:
+
+```python markdown-code-runner
+choices.prepare(
+    OMMXGurobipyAdapter.INPUT_CLASS,
+    OMMXGurobipyAdapter.recommended_preparation_policy(),
+)
+assert not choices.active_constraints.of_kind(ConstraintKind.OneHot)
+solution = OMMXGurobipyAdapter.solve_without_preparation(choices)
+assert solution.objective == 5
+```
+
+The recommended policy converts only OneHot constraints. Indicator and SOS1
+constraints are passed to Gurobi directly; Indicators support both
+`trigger_value=0` and `trigger_value=1`.
 
 ### Controlling Gurobi Parameters
 
