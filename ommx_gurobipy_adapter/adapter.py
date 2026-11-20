@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import ClassVar, final
 
 import gurobipy as gp
 from gurobipy import GRB
@@ -51,6 +51,7 @@ _LINEAR_INDICATOR_CONSTRAINT_POLYNOMIAL_REQUIREMENTS = {
 }
 
 
+@final
 class OMMXGurobipyAdapter(SolverAdapter):
     INPUT_CLASS: ClassVar[InstanceClass] = InstanceClass(
         [

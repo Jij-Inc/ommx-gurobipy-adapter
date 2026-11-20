@@ -32,6 +32,9 @@ pip install ommx-gurobipy-adapter
 
 ## Usage
 
+`OMMXGurobipyAdapter` is marked with `typing.final`; type checkers reject
+subclasses. Implement custom adapters using `ommx.adapter.SolverAdapter`.
+
 Here's a simple example of how to use the adapter:
 
 ```python markdown-code-runner
